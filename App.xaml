@@ -1,0 +1,61 @@
+<Application x:Class="BloodBankAccounting.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:BloodBankAccounting.ViewModels"
+             xmlns:views="clr-namespace:BloodBankAccounting.Views"
+             xmlns:converters="clr-namespace:BloodBankAccounting.Converters"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Views/Styles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- ═══════════ CONVERTERS ════════════════════════ -->
+            <converters:BoolToVisibilityConverter          x:Key="BoolToVisibilityConverter"/>
+            <converters:InverseBoolConverter               x:Key="InverseBoolConverter"/>
+            <converters:InverseBoolToVisibilityConverter   x:Key="InverseBoolToVisibilityConverter"/>
+            <converters:DecimalToStringConverter           x:Key="DecimalToStringConverter"/>
+            <converters:RowNumberConverter                 x:Key="RowNumberConverter"/>
+            <converters:ExpiringBagConverter               x:Key="ExpiringBagConverter"/>
+            <converters:OverCreditLimitConverter           x:Key="OverCreditLimitConverter"/>
+            <converters:EnumDisplayConverter               x:Key="EnumDisplay"/>
+            <converters:IsNegativeConverter                x:Key="IsNegativeConverter"/>
+
+            <!-- ═══════════ DATA TEMPLATES (Navigation) ══════ -->
+            <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
+                <views:DashboardView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:InvoiceViewModel}">
+                <views:InvoiceView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:InvoiceListViewModel}">
+                <views:InvoiceListView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ReceiptVoucherViewModel}">
+                <views:ReceiptVoucherView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:PaymentVoucherViewModel}">
+                <views:PaymentVoucherView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:CustomersViewModel}">
+                <views:CustomersView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:BloodInventoryViewModel}">
+                <views:BloodInventoryView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:DebtReportViewModel}">
+                <views:DebtReportView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SafeReportViewModel}">
+                <views:SafeReportView/>
+            </DataTemplate>
+
+            <!-- ─── جديد ─── -->
+            <DataTemplate DataType="{x:Type vm:OrgSettingsViewModel}">
+                <views:OrganizationSettingsView/>
+            </DataTemplate>
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

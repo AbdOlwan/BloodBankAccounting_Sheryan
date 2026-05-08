@@ -1,0 +1,137 @@
+﻿<Window x:Class="BloodBankAccounting.Views.PinDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="التحقق من الهوية"
+        Height="310" Width="390"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        FlowDirection="RightToLeft"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Border Background="White" CornerRadius="16"
+            BorderBrush="#E5E8EC" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" Opacity="0.14" ShadowDepth="6" Direction="270"/>
+        </Border.Effect>
+
+        <StackPanel Margin="32,28,32,28">
+
+            <!-- ── أيقونة + عنوان ── -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,22"
+                        HorizontalAlignment="Center">
+                <Border Background="#C0392B" CornerRadius="10"
+                        Width="42" Height="42" Margin="0,0,14,0">
+                    <TextBlock Text="🔒" FontSize="20"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="منطقة محمية"
+                               FontSize="15" FontWeight="Bold"
+                               Foreground="#1A2744"/>
+                    <TextBlock Text="أدخل الرمز السري للمالك"
+                               FontSize="11" Foreground="#8A9BB0"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ── خط فاصل ── -->
+            <Border Height="1" Background="#F0F2F5" Margin="0,0,0,20"/>
+
+            <!-- ── PasswordBox ── -->
+            <PasswordBox x:Name="PinBox"
+                         MaxLength="20"
+                         FontSize="24" FontWeight="Bold"
+                         HorizontalContentAlignment="Center"
+                         PasswordChar="●"
+                         Padding="12,10"
+                         BorderBrush="#D5D8DC" BorderThickness="1.5"
+                         Background="#F8F9FA"
+                         Margin="0,0,0,6">
+                <PasswordBox.Template>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border CornerRadius="10"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </PasswordBox.Template>
+            </PasswordBox>
+
+            <!-- ── رسالة الخطأ ──
+                 Hidden (لا Collapsed) حتى تحتفظ بالمساحة دائماً وتختفي ErrorSpacer -->
+            <TextBlock x:Name="ErrorText"
+                       Text="⚠  الرمز غير صحيح، حاول مرة أخرى"
+                       Foreground="#C0392B" FontSize="11.5"
+                       HorizontalAlignment="Center"
+                       Margin="0,4,0,14"
+                       Visibility="Hidden"/>
+
+            <!-- ── أزرار ── -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- زر الدخول -->
+                <Button x:Name="OkBtn" Grid.Column="0"
+                        Content="✔  دخول"
+                        Height="42" FontSize="13" FontWeight="SemiBold"
+                        Background="#C0392B" Foreground="White"
+                        BorderThickness="0" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" CornerRadius="10"
+                                    Background="{TemplateBinding Background}">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="#922B21"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="#7B241C"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- زر الإلغاء -->
+                <Button x:Name="CancelBtn" Grid.Column="2"
+                        Content="إلغاء"
+                        Height="42" FontSize="13"
+                        Background="White" Foreground="#566573"
+                        BorderBrush="#D5D8DC" BorderThickness="1"
+                        Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" CornerRadius="10"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="#F4F6F8"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+        </StackPanel>
+    </Border>
+</Window>

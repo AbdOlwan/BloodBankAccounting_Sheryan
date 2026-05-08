@@ -1,0 +1,222 @@
+<Window x:Class="BloodBankAccounting.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:BloodBankAccounting.ViewModels"
+        Title="بنك الدم — نظام المحاسبة"
+        WindowState="Maximized"
+        Height="800" Width="1280"
+        MinHeight="720" MinWidth="1280"
+        WindowStartupLocation="CenterScreen"
+        FlowDirection="RightToLeft"
+        Icon="/Resources/sharyan.ico"
+        Background="{StaticResource BackgroundBrush}">
+
+    <Window.DataContext>
+        <vm:MainWindowViewModel/>
+    </Window.DataContext>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ════════════ SIDEBAR ══════════════════════════════ -->
+        <Border Grid.Column="0" Background="{StaticResource SidebarBrush}">
+            <DockPanel>
+
+                 <!-- Logo -->
+                <Border DockPanel.Dock="Top" Padding="20,24,20,20"
+        BorderBrush="#FFFFFF22" BorderThickness="0,0,0,1">
+                    <StackPanel>
+                        <Border Background="{StaticResource PrimaryBrush}"
+                CornerRadius="10" Width="44" Height="44"
+                HorizontalAlignment="Right">
+
+                            <!-- ✅ بدل TextBlock الإيموجي -->
+                            <Image Source="/Resources/sharyan.ico"
+                   Width="28" Height="28"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                        </Border>
+                        <TextBlock Text="شريان" Foreground="White"
+                   FontSize="20" FontWeight="Bold"
+                   Margin="0,10,0,2"/>
+                        <TextBlock Text="نظام محاسبة بنك الدم"
+                   Foreground="#AAAAAA" FontSize="11"/>
+                    </StackPanel>
+                </Border>
+                <!-- Nav Items -->
+                <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="12,16,12,16">
+
+                        <TextBlock Text="الرئيسية" Foreground="#888888"
+                                   FontSize="10" FontWeight="Bold"
+                                   Margin="8,0,8,6"/>
+                        <Button Command="{Binding NavigateToDashboardCommand}"
+                                Style="{StaticResource NavButton}" Content="📊  لوحة التحكم"/>
+
+                        <TextBlock Text="المعاملات" Foreground="#888888"
+                                   FontSize="10" FontWeight="Bold"
+                                   Margin="8,16,8,6"/>
+                        <Button Command="{Binding NavigateToInvoiceCommand}"
+                                Style="{StaticResource NavButton}" Content="🧾  فاتورة جديدة"/>
+                        <Button Command="{Binding NavigateToInvoiceListCommand}"
+                                Style="{StaticResource NavButton}" Content="📋  سجل الفواتير"/>
+                        <Button Command="{Binding NavigateToReceiptCommand}"
+                                Style="{StaticResource NavButton}" Content="⬇️  سند قبض"/>
+                        <Button Command="{Binding NavigateToPaymentCommand}"
+                                Style="{StaticResource NavButton}" Content="⬆️  سند دفع"/>
+
+                        <TextBlock Text="البيانات" Foreground="#888888"
+                                   FontSize="10" FontWeight="Bold"
+                                   Margin="8,16,8,6"/>
+                        <Button Command="{Binding NavigateToCustomersCommand}"
+                                Style="{StaticResource NavButton}" Content="👤  العملاء"/>
+                        <Button Command="{Binding NavigateToBloodInventoryCommand}"
+                                Style="{StaticResource NavButton}" Content="🩸  مخزون الدم"/>
+
+                        <TextBlock Text="التقارير" Foreground="#888888"
+                                   FontSize="10" FontWeight="Bold"
+                                   Margin="8,16,8,6"/>
+                        <Button Command="{Binding NavigateToDebtReportCommand}"
+                                Style="{StaticResource NavButton}" Content="📉  تقرير الديون"/>
+                        <Button Command="{Binding NavigateToSafeReportCommand}"
+                                Style="{StaticResource NavButton}" Content="🏦  الخزينة"/>
+
+                        <!-- ─── جديد ─── -->
+                        <TextBlock Text="الإعدادات" Foreground="#888888"
+                                   FontSize="10" FontWeight="Bold"
+                                   Margin="8,16,8,6"/>
+                        <Button Command="{Binding NavigateToOrgSettingsCommand}"
+                                Style="{StaticResource NavButton}" Content="⚙️  إعدادات المؤسسة"/>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+            </DockPanel>
+        </Border>
+
+        <!-- ════════════ CONTENT AREA ════════════════════════ -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="56"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Top bar -->
+            <Border Grid.Row="0" Background="White"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,0,0,1" Padding="24,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding CurrentPageTitle}"
+                               FontSize="16" FontWeight="Bold"
+                               Foreground="{StaticResource TextBrush}"
+                               VerticalAlignment="Center"/>
+
+                    <TextBlock Grid.Column="1"
+                               xmlns:system="clr-namespace:System;assembly=mscorlib"
+                               Text="{Binding Source={x:Static system:DateTime.Now},
+                                              StringFormat='dddd، d MMMM yyyy'}"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="12"
+                               VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- Page content via DataTemplate -->
+            <ContentControl Grid.Row="1"
+                            Content="{Binding CurrentPage}"
+                            Margin="0"/>
+        </Grid>
+
+        <!-- ════════════ FOOTER ═══════════════════════════════ -->
+        <Border Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                Height="36" BorderThickness="0,1,0,0">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#111827" Offset="0"/>
+                    <GradientStop Color="#1A2744" Offset="0.5"/>
+                    <GradientStop Color="#111827" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.BorderBrush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                    <GradientStop Color="#1A2744" Offset="0"/>
+                    <GradientStop Color="#C9A84C" Offset="0.3"/>
+                    <GradientStop Color="#E8D5A3" Offset="0.5"/>
+                    <GradientStop Color="#C9A84C" Offset="0.7"/>
+                    <GradientStop Color="#1A2744" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.BorderBrush>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Rectangle Grid.Column="0" Height="1" VerticalAlignment="Center"
+                           Margin="32,0,20,0" Opacity="0.25">
+                    <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="Transparent" Offset="0"/>
+                            <GradientStop Color="#C9A84C"     Offset="1"/>
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal"
+                            VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <TextBlock Text="✦" Foreground="#C9A84C" FontSize="7"
+                               VerticalAlignment="Center" Margin="0,0,12,0" Opacity="0.8"/>
+                    <TextBlock Text="تصميم وبرمجة" Foreground="#6B82A8"
+                               FontSize="10.5" VerticalAlignment="Center"
+                               FontFamily="Segoe UI, Tahoma, Arial" Margin="0,0,7,0"/>
+                    <TextBlock Text="مهندس عبدالرحمن علوان"
+                               Foreground="#EAD9B0" FontSize="12" FontWeight="SemiBold"
+                               FontFamily="Segoe UI, Tahoma, Arial" VerticalAlignment="Center"/>
+                    <Border Width="1" Height="15" Margin="14,0" VerticalAlignment="Center" Opacity="0.4">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="Transparent" Offset="0"/>
+                                <GradientStop Color="#C9A84C"     Offset="0.5"/>
+                                <GradientStop Color="Transparent" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                    </Border>
+                    <TextBlock Text="0112 7136 834"
+                               Foreground="#C9A84C" FontSize="12" FontWeight="SemiBold"
+                               FontFamily="Consolas, Courier New, monospace"
+                               VerticalAlignment="Center" FlowDirection="LeftToRight"/>
+                    <TextBlock Text="✦" Foreground="#C9A84C" FontSize="7"
+                               VerticalAlignment="Center" Margin="12,0,0,0" Opacity="0.8"/>
+                </StackPanel>
+
+                <Rectangle Grid.Column="2" Height="1" VerticalAlignment="Center"
+                           Margin="20,0,32,0" Opacity="0.25">
+                    <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#C9A84C" Offset="0"/>
+                            <GradientStop Color="Transparent" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>

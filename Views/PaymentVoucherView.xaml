@@ -1,0 +1,151 @@
+﻿<UserControl x:Class="BloodBankAccounting.Views.PaymentVoucherView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="800">
+
+    <Grid Margin="32">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="480"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ════ LEFT: Form ═════════════════════════════════════ -->
+        <StackPanel Grid.Column="0">
+
+            <!-- Title -->
+            <TextBlock Text="⬆️ سند دفع نقدي" FontSize="20" FontWeight="Bold"
+                       Foreground="#1A2744" Margin="0,0,0,24"/>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+
+                    <!-- رقم السند + التاريخ -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="رقم السند" Style="{StaticResource FormLabel}"/>
+                            <TextBlock Text="{Binding VoucherNumber}" FontSize="15"
+                                       FontWeight="Bold" Foreground="#C0392B"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="تاريخ السند" Style="{StaticResource FormLabel}"/>
+                            <DatePicker SelectedDate="{Binding Date}" FontSize="13"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- الخزينة -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="الخزينة *" Style="{StaticResource FormLabel}"/>
+                        <ComboBox ItemsSource="{Binding Safes}"
+                                  SelectedItem="{Binding SelectedSafe}"
+                                  DisplayMemberPath="Name"
+                                  Style="{StaticResource FormComboBox}"/>
+                    </StackPanel>
+
+                    <!-- اسم المستلم -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="اسم المستلم *" Style="{StaticResource FormLabel}"/>
+                        <TextBox Text="{Binding PayeeName, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource FormTextBox}"
+                                 FontSize="14"/>
+                    </StackPanel>
+
+                    <!-- المبلغ -->
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="المبلغ (ج.م) *" Style="{StaticResource FormLabel}"/>
+                        <TextBox Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource FormTextBox}"
+                                 FontSize="20" FontWeight="Bold"/>
+                    </StackPanel>
+
+                    <!-- رصيد الخزينة -->
+                    <Border Background="#F8F9FA" CornerRadius="8" Padding="12,8" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="رصيد الخزينة الحالي: " Foreground="#566573"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding SelectedSafe.Balance, StringFormat='{}{0:N2} ج.م'}"
+                                       FontWeight="Bold" FontSize="14"
+                                       Foreground="#1A2744" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- البيان -->
+                    <StackPanel Margin="0,0,0,20">
+                        <TextBlock Text="البيان (وصف سبب الصرف)" Style="{StaticResource FormLabel}"/>
+                        <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource FormTextBox}"
+                                 Height="70" TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"/>
+                    </StackPanel>
+
+                    <!-- Buttons -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Grid.Column="0"
+                                Content="💾  حفظ السند"
+                                Command="{Binding SaveCommand}"
+                                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                                Style="{StaticResource PrimaryButton}"
+                                Height="44" FontSize="14"/>
+
+                        <Button Grid.Column="2"
+                                Content="🖨  طباعة"
+                                Command="{Binding PrintCommand}"
+                                IsEnabled="{Binding CanPrint}"
+                                Style="{StaticResource SecondaryButton}"
+                                Height="44" FontSize="14"/>
+                    </Grid>
+
+                    <Button Content="➕  سند جديد"
+                            Command="{Binding NewVoucherCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Margin="0,8,0,0" Height="36"/>
+
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- ════ RIGHT: Tips ════════════════════════════════════ -->
+        <StackPanel Grid.Column="1" Margin="32,44,0,0" VerticalAlignment="Top">
+
+            <Border Background="#FFF8F0" CornerRadius="12" Padding="20" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="💡 إرشادات" FontWeight="Bold" FontSize="13"
+                               Foreground="#E67E22" Margin="0,0,0,10"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#566573" FontSize="12" LineHeight="22">
+                        <Run Text="• سند الدفع يُستخدم لصرف مبالغ نقدية من الخزينة."/>
+                        <LineBreak/>
+                        <Run Text="• مثال: مرتبات الموظفين، مصاريف التشغيل، دفع لمورّد."/>
+                        <LineBreak/>
+                        <Run Text="• يتم خصم المبلغ تلقائياً من رصيد الخزينة المحددة."/>
+                        <LineBreak/>
+                        <Run Text="• يُنشأ قيد محاسبي: مصاريف مدين — خزينة دائن."/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <Border Background="#F0F8FF" CornerRadius="12" Padding="20">
+                <StackPanel>
+                    <TextBlock Text="⚠️ تنبيه" FontWeight="Bold" FontSize="13"
+                               Foreground="#2980B9" Margin="0,0,0,10"/>
+                    <TextBlock TextWrapping="Wrap" Foreground="#566573" FontSize="12" LineHeight="22">
+                        <Run Text="لن يتم حفظ السند إذا كان رصيد الخزينة أقل من المبلغ المطلوب صرفه."/>
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </Grid>
+</UserControl>
