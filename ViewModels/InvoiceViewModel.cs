@@ -77,12 +77,14 @@ public partial class InvoiceViewModel : ViewModelBase
     public IReadOnlyList<string> BloodProductTypes { get; } =
     [
         "دم كامل",
-        "بلازما طازجة مجمدة",
-        "صفائح دموية",
-        "كريات حمراء مضغوطة",
-        "بلازما ناضجة",
-        "ترسيب قري",
-        "مستحضرات بلازما",
+        "كرات دم مكدسه",
+        "بلازما طازجه مجمده",
+        "كرايو - راسب اببض",
+        "٦ وحدات صفائح دموية",
+        " وحدة صفائح",
+        "فلترة كيس دم",
+        "غسيل كيس دم",
+        "كيس دم اطفال",
     ];
 
     public InvoiceViewModel() { _ = LoadAsync(); }

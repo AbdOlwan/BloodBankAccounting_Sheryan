@@ -1,6 +1,7 @@
 using BloodBankAccounting.Data;
 using BloodBankAccounting.Helpers;
 using BloodBankAccounting.Models;
+using BloodBankAccounting.Printing;
 using BloodBankAccounting.ViewModels.Base;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -23,7 +24,8 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
     public ObservableCollection<Customer> Customers        { get; } = [];
     public ObservableCollection<Safe>     Safes            { get; } = [];
     public ObservableCollection<Invoice>  CustomerInvoices { get; } = [];
-
+    private int? _savedVoucherId;
+    public bool CanPrint => _savedVoucherId.HasValue;
     public ReceiptVoucherViewModel() { _ = LoadAsync(); }
 
     private async Task LoadAsync()
@@ -108,6 +110,8 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
             await db.SaveChangesAsync();
 
             await tx.CommitAsync();
+            _savedVoucherId = voucher.Id;
+            OnPropertyChanged(nameof(CanPrint));
             ShowSuccess($"تم حفظ سند القبض {VoucherNumber} ✓");
             await LoadAsync();
             SelectedCustomer = null;
@@ -123,5 +127,15 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
         if (SelectedSafe is null)     { ShowError("اختر الخزينة"); return false; }
         if (Amount <= 0)              { ShowError("المبلغ يجب أن يكون أكبر من صفر"); return false; }
         return true;
+    }
+
+    [RelayCommand]
+    private async Task PrintAsync()
+    {
+        if (!_savedVoucherId.HasValue) return;
+        IsBusy = true;
+        try { await ReceiptPrinter.PrintAsync(_savedVoucherId.Value); }
+        catch (Exception ex) { ShowError(ex.Message); }
+        finally { IsBusy = false; }
     }
 }

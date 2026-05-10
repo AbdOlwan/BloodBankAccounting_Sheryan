@@ -1,7 +1,8 @@
+using BloodBankAccounting.Data;
 using BloodBankAccounting.ViewModels.Base;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using static BloodBankAccounting.ViewModels.OrgSettingsViewModel;
+using System.Windows.Threading;
 
 namespace BloodBankAccounting.ViewModels;
 
@@ -10,6 +11,10 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private ViewModelBase? _currentPage;
     [ObservableProperty] private string _currentPageTitle = "الرئيسية";
 
+    // ─── حالة النسخ الاحتياطي — تظهر في الـ Footer ──────────────────────
+    [ObservableProperty] private string _backupStatus = "جاري التحقق...";
+
+    // ─── Navigation ───────────────────────────────────────────────────────
     [RelayCommand] private void NavigateToDashboard() { CurrentPage = new DashboardViewModel(); CurrentPageTitle = "لوحة التحكم"; }
     [RelayCommand] private void NavigateToInvoice() { CurrentPage = new InvoiceViewModel(); CurrentPageTitle = "فاتورة مبيعات جديدة"; }
     [RelayCommand] private void NavigateToInvoiceList() { CurrentPage = new InvoiceListViewModel(); CurrentPageTitle = "سجل الفواتير"; }
@@ -21,5 +26,29 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand] private void NavigateToSafeReport() { CurrentPage = new SafeReportViewModel(); CurrentPageTitle = "الخزينة"; }
     [RelayCommand] private void NavigateToOrgSettings() { CurrentPage = new OrgSettingsViewModel(); CurrentPageTitle = "إعدادات المؤسسة"; }
 
-    public MainWindowViewModel() => NavigateToDashboard();
+    public MainWindowViewModel()
+    {
+        NavigateToDashboard();
+        SubscribeToBackupEvents();
+    }
+
+    // ─── ربط حالة الـ Backup بالـ ViewModel ──────────────────────────────
+    private void SubscribeToBackupEvents()
+    {
+        // نقرأ الحالة الأولية من الـ Service
+        BackupStatus = AutoBackupService.Instance.LastStatusText;
+
+        AutoBackupService.Instance.BackupSucceeded += path =>
+        {
+            // نحدّث الـ UI على الـ UI Thread
+            Dispatcher.CurrentDispatcher.InvokeAsync(() =>
+                BackupStatus = $"✓ آخر نسخة: {DateTime.Now:hh:mm tt}");
+        };
+
+        AutoBackupService.Instance.BackupFailed += _ =>
+        {
+            Dispatcher.CurrentDispatcher.InvokeAsync(() =>
+                BackupStatus = "⚠ فشل النسخ الاحتياطي");
+        };
+    }
 }

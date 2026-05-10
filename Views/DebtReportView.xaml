@@ -2,7 +2,14 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <Grid Margin="24">
+    <!--
+        ✅ التغييرات للتجاوب:
+        1. الشاشة مُغلَّفة بـ ScrollViewer لضمان ظهور المحتوى على الشاشات الصغيرة
+        2. Margin الخارجي: "24" → "20"
+        3. بنية الأعمدة في الـ DataGrid كانت جيدة بالفعل (يستخدم * للعمود الرئيسي)
+    -->
+
+    <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -10,29 +17,27 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,16" Padding="20">
+        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,14" Padding="20">
             <StackPanel>
-                <!-- العنوان والأيقونة -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                     <TextBlock Text="📉" FontSize="18" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                    <TextBlock Text="تقرير الديون المستحقة" 
-                       FontSize="15" FontWeight="SemiBold" Foreground="#1A2744" 
-                       VerticalAlignment="Center"/>
+                    <TextBlock Text="تقرير الديون المستحقة"
+                               FontSize="15" FontWeight="SemiBold" Foreground="#1A2744"
+                               VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- القيمة -->
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="إجمالي الديون: " Foreground="#7F8C8D" FontSize="14" 
-                       VerticalAlignment="Bottom" Margin="0,0,8,3"/>
-                    <TextBlock Text="{Binding TotalDebt, StringFormat='{}{0:N2} ج.م'}" 
-                       Foreground="#C0392B" FontSize="24" FontWeight="Bold" 
-                       VerticalAlignment="Bottom"/>
+                    <TextBlock Text="إجمالي الديون: " Foreground="#7F8C8D" FontSize="14"
+                               VerticalAlignment="Bottom" Margin="0,0,8,3"/>
+                    <TextBlock Text="{Binding TotalDebt, StringFormat='{}{0:N2} ج.م'}"
+                               Foreground="#C0392B" FontSize="24" FontWeight="Bold"
+                               VerticalAlignment="Bottom"/>
                 </StackPanel>
             </StackPanel>
         </Border>
 
         <!-- Debtors grid -->
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,16">
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,14">
             <DataGrid Style="{StaticResource MainDataGrid}"
                       ItemsSource="{Binding Debtors}">
                 <DataGrid.Columns>

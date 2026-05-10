@@ -63,7 +63,7 @@ namespace BloodBankAccounting.Migrations
                     b.HasIndex("BagNumber")
                         .IsUnique();
 
-                    b.ToTable("BloodBags");
+                    b.ToTable("BloodBags", (string)null);
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.Customer", b =>
@@ -108,7 +108,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasIndex("Name");
 
-                    b.ToTable("Customers");
+                    b.ToTable("Customers", (string)null);
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.Invoice", b =>
@@ -170,7 +170,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasIndex("SafeId");
 
-                    b.ToTable("Invoices");
+                    b.ToTable("Invoices", (string)null);
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.InvoiceLine", b =>
@@ -207,7 +207,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasIndex("InvoiceId");
 
-                    b.ToTable("InvoiceLines");
+                    b.ToTable("InvoiceLines", (string)null);
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.JournalEntry", b =>
@@ -265,7 +265,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasIndex("RefType", "RefId");
 
-                    b.ToTable("JournalEntries");
+                    b.ToTable("JournalEntries", (string)null);
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.OrganizationSettings", b =>
@@ -307,7 +307,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("OrgSettings");
+                    b.ToTable("OrgSettings", (string)null);
 
                     b.HasData(
                         new
@@ -375,7 +375,7 @@ namespace BloodBankAccounting.Migrations
                     b.HasIndex("VoucherNumber")
                         .IsUnique();
 
-                    b.ToTable("ReceiptVouchers");
+                    b.ToTable("ReceiptVouchers", (string)null);
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.Safe", b =>
@@ -403,7 +403,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Safes");
+                    b.ToTable("Safes", (string)null);
 
                     b.HasData(
                         new

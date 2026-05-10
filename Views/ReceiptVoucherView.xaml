@@ -152,6 +152,16 @@
                     Command="{Binding SaveCommand}"
                     Height="48" FontSize="15"
                     Content="⬇️  حفظ سند القبض"/>
+
+            <Button
+                    Style="{StaticResource SecondaryButton}"
+                    Background="#F0F8FF" 
+                    BorderBrush="#D6EAF8"
+                    Foreground="#2E86C1"
+                    Command="{Binding PrintCommand}"
+                    IsEnabled="{Binding CanPrint}"
+                    Height="48" FontSize="15"
+                    Content="🖨  طباعة" Margin="0,473,0,16"/>
         </Grid>
     </Grid>
 </UserControl>

@@ -13,15 +13,11 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // ─── FIX: منع الـ WPF من إغلاق التطبيق لما TrialView يتقفل ────────
-        // السبب: ShutdownMode="OnMainWindowClose" في App.xaml بيخلي WPF
-        // يعتبر TrialView هو الـ MainWindow (أول window يتفتح) وبيقفل
-        // التطبيق فور ما بيتقفل — قبل ما MainWindow يتعرض.
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         QuestPDF.Settings.License = LicenseType.Community;
 
-        // ─── 1. Trial / License check ─────────────────────────
+        // ─── 1. Trial / License check ──────────────────────────────────
         if (!TrialManager.IsActivated())
         {
             var trial = new TrialView();
@@ -29,7 +25,7 @@ public partial class App : Application
             if (!trial.Proceed) { Shutdown(); return; }
         }
 
-        // ─── 2. Database ──────────────────────────────────────
+        // ─── 2. Database ───────────────────────────────────────────────
         try
         {
             using var db = new AppDbContext();
@@ -46,13 +42,34 @@ public partial class App : Application
             return;
         }
 
-        // ─── 3. Open Main Window ──────────────────────────────
+        // ─── 3. Open Main Window ───────────────────────────────────────
         var main = new MainWindow();
         MainWindow = main;
-
-        // ─── FIX: الآن نرجع الـ ShutdownMode الطبيعي بعد ما عيّنا MainWindow ─
         ShutdownMode = ShutdownMode.OnMainWindowClose;
-
         main.Show();
+
+        // ─── 4. بدء النسخ الاحتياطي التلقائي ─────────────────────────
+        // يبدأ بعد ما الـ MainWindow يتفتح حتى لا يؤثر على وقت التحميل.
+        // يعمل في الخلفية — لا يوقف واجهة المستخدم.
+        AutoBackupService.Instance.BackupFailed += OnAutoBackupFailed;
+        AutoBackupService.Instance.Start();
+    }
+
+    // ─── عرض إشعار صامت لو فشل الـ Backup (اختياري) ──────────────────
+    private void OnAutoBackupFailed(Exception ex)
+    {
+        // نُبلّغ على الـ UI Thread
+        Dispatcher.InvokeAsync(() =>
+        {
+            // رسالة خفيفة في الـ Title Bar بدل MessageBox مزعجة
+            if (MainWindow is not null)
+                MainWindow.Title = "بنك الدم — نظام المحاسبة  ⚠ فشل النسخ الاحتياطي";
+        });
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        AutoBackupService.Instance.Dispose();
+        base.OnExit(e);
     }
 }
