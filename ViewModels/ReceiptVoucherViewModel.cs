@@ -21,25 +21,71 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
     [ObservableProperty] private Safe? _selectedSafe;
     [ObservableProperty] private Invoice? _selectedInvoice;
 
-    public ObservableCollection<Customer> Customers        { get; } = [];
-    public ObservableCollection<Safe>     Safes            { get; } = [];
-    public ObservableCollection<Invoice>  CustomerInvoices { get; } = [];
+    // ─── Customer search ─────────────────────────────────────
+    [ObservableProperty] private string _customerSearchText = string.Empty;
+    [ObservableProperty] private bool _isSearchDropdownOpen;
+
+    public ObservableCollection<Customer> Customers { get; } = [];
+    public ObservableCollection<Safe> Safes { get; } = [];
+    public ObservableCollection<Invoice> CustomerInvoices { get; } = [];
+    public ObservableCollection<Customer> FilteredCustomers { get; } = [];
+
     private int? _savedVoucherId;
     public bool CanPrint => _savedVoucherId.HasValue;
+
     public ReceiptVoucherViewModel() { _ = LoadAsync(); }
+
+    // ─── Filter as user types ─────────────────────────────────
+    partial void OnCustomerSearchTextChanged(string value)
+    {
+        FilteredCustomers.Clear();
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            IsSearchDropdownOpen = false;
+            // Clear selection if user erased the box
+            if (SelectedCustomer is not null)
+            {
+                SelectedCustomer = null;
+                CustomerInvoices.Clear();
+                Amount = 0;
+            }
+            return;
+        }
+
+        var lower = value.Trim().ToLowerInvariant();
+        var matches = Customers
+            .Where(c => c.Name.ToLowerInvariant().Contains(lower))
+            .Take(12);
+
+        foreach (var c in matches) FilteredCustomers.Add(c);
+        IsSearchDropdownOpen = FilteredCustomers.Count > 0;
+    }
+
+    // ─── Pick a customer from dropdown ───────────────────────
+    [RelayCommand]
+    private void SelectCustomer(Customer customer)
+    {
+        SelectedCustomer = customer;
+        CustomerSearchText = customer.Name;
+        IsSearchDropdownOpen = false;
+    }
+
+    // ─── Close dropdown from View code-behind ────────────────
+    public void CloseDropdown() => IsSearchDropdownOpen = false;
 
     private async Task LoadAsync()
     {
-        using var db  = new AppDbContext();
+        using var db = new AppDbContext();
         var customers = await db.Customers.Where(c => c.IsActive && c.Balance > 0)
                                           .OrderBy(c => c.Name).ToListAsync();
-        var safes     = await db.Safes.OrderBy(s => s.Name).ToListAsync();
+        var safes = await db.Safes.OrderBy(s => s.Name).ToListAsync();
 
         Customers.Clear(); customers.ForEach(Customers.Add);
-        Safes.Clear();     safes.ForEach(Safes.Add);
+        Safes.Clear(); safes.ForEach(Safes.Add);
 
         VoucherNumber = await NumberGenerator.NextVoucherNumberAsync(db);
-        SelectedSafe  = safes.FirstOrDefault(s => s.IsMain);
+        SelectedSafe = safes.FirstOrDefault(s => s.IsMain);
     }
 
     partial void OnSelectedCustomerChanged(Customer? value)
@@ -57,7 +103,7 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
             .Where(i => i.CustomerId == customer.Id
                      && (i.PaymentType == PaymentType.Credit || i.PaymentType == PaymentType.Partial)
                      && !i.IsCancelled
-                     && i.PaidAmount < i.TotalAmount)   // لا تزال عليه دفعات
+                     && i.PaidAmount < i.TotalAmount)
             .OrderByDescending(i => i.Date)
             .ToListAsync();
 
@@ -72,24 +118,23 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
         IsBusy = true;
         try
         {
-            using var db  = new AppDbContext();
+            using var db = new AppDbContext();
             await using var tx = await db.Database.BeginTransactionAsync();
 
             var voucher = new ReceiptVoucher
             {
-                VoucherNumber    = VoucherNumber,
-                Date             = Date,
-                SafeId           = SelectedSafe!.Id,
-                CustomerId       = SelectedCustomer!.Id,
+                VoucherNumber = VoucherNumber,
+                Date = Date,
+                SafeId = SelectedSafe!.Id,
+                CustomerId = SelectedCustomer!.Id,
                 RelatedInvoiceId = SelectedInvoice?.Id,
-                Amount           = Amount,
-                Notes            = Notes
+                Amount = Amount,
+                Notes = Notes
             };
 
             db.ReceiptVouchers.Add(voucher);
             await db.SaveChangesAsync();
 
-            // ─── Update balances ─────────────────────────────
             var customer = await db.Customers.FindAsync(SelectedCustomer!.Id);
             customer!.Balance -= Amount;
 
@@ -104,7 +149,6 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
 
             await db.SaveChangesAsync();
 
-            // ─── Journal ─────────────────────────────────────
             voucher.Customer = customer;
             JournalService.PostReceipt(db, voucher);
             await db.SaveChangesAsync();
@@ -113,8 +157,11 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
             _savedVoucherId = voucher.Id;
             OnPropertyChanged(nameof(CanPrint));
             ShowSuccess($"تم حفظ سند القبض {VoucherNumber} ✓");
+
             await LoadAsync();
             SelectedCustomer = null;
+            CustomerSearchText = string.Empty;
+            IsSearchDropdownOpen = false;
             Amount = 0;
         }
         catch (Exception ex) { ShowError(ex.Message); }
@@ -124,8 +171,8 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
     private bool Validate()
     {
         if (SelectedCustomer is null) { ShowError("اختر العميل"); return false; }
-        if (SelectedSafe is null)     { ShowError("اختر الخزينة"); return false; }
-        if (Amount <= 0)              { ShowError("المبلغ يجب أن يكون أكبر من صفر"); return false; }
+        if (SelectedSafe is null) { ShowError("اختر الخزينة"); return false; }
+        if (Amount <= 0) { ShowError("المبلغ يجب أن يكون أكبر من صفر"); return false; }
         return true;
     }
 

@@ -35,13 +35,272 @@
                         <DatePicker SelectedDate="{Binding Date}" FontSize="13"/>
                     </StackPanel>
 
-                    <!-- Customer -->
+                    <!-- ════ Customer Search ════ -->
                     <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,0">
                         <TextBlock Text="العميل (الديون فقط)" Style="{StaticResource FormLabel}"/>
-                        <ComboBox ItemsSource="{Binding Customers}"
-                                  SelectedItem="{Binding SelectedCustomer}"
-                                  DisplayMemberPath="Name"
-                                  Style="{StaticResource FormComboBox}"/>
+
+                        <!-- Wrapper so Popup anchors correctly -->
+                        <Grid x:Name="CustomerSearchRoot">
+
+                            <!-- Search TextBox -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox x:Name="CustomerSearchBox"
+                                         Grid.Column="0"
+                                         Text="{Binding CustomerSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource FormTextBox}"
+                                         ToolTip="اكتب اسم العميل للبحث"
+                                         Padding="10,8,36,8"/>
+
+                                <!-- Search icon -->
+                                <TextBlock Grid.Column="0"
+                                           Text="🔍"
+                                           FontSize="13"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Left"
+                                           Margin="8,0,0,0"
+                                           IsHitTestVisible="False"
+                                           Foreground="#ADB5BD"/>
+
+                                <!-- Placeholder -->
+                                <TextBlock Grid.Column="0"
+                                           Text="ابحث باسم العميل..."
+                                           FontSize="13"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"
+                                           Margin="0,0,10,0"
+                                           IsHitTestVisible="False"
+                                           Foreground="#BDC3C7">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding CustomerSearchText}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <!-- Clear button -->
+                                <Button Grid.Column="1"
+                                        Content="✕"
+                                        FontSize="11"
+                                        Width="26" Height="26"
+                                        Margin="4,0,0,0"
+                                        Cursor="Hand"
+                                        Foreground="#95A5A6"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Command="{Binding SelectCustomerCommand}"
+                                        ToolTip="مسح الاختيار">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}"
+                                                                CornerRadius="13"
+                                                                Width="26" Height="26">
+                                                            <ContentPresenter HorizontalAlignment="Center"
+                                                                              VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#ECF0F1"/>
+                                                                <Setter Property="Foreground" Value="#E74C3C"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding SelectedCustomer}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding CustomerSearchText}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </Grid>
+
+                            <!-- Selected customer badge -->
+                            <Border Margin="0,4,0,0"
+                                    VerticalAlignment="Bottom"
+                                    HorizontalAlignment="Left"
+                                    Background="#EAF6FF"
+                                    BorderBrush="#AED6F1"
+                                    BorderThickness="1"
+                                    CornerRadius="4"
+                                    Padding="8,3">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedCustomer}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="✔ " Foreground="#2E86C1" FontSize="11"/>
+                                    <TextBlock Text="{Binding SelectedCustomer.Name}"
+                                               Foreground="#2E86C1" FontSize="11" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Dropdown Popup -->
+                            <Popup x:Name="CustomerPopup"
+                                   IsOpen="{Binding IsSearchDropdownOpen, Mode=TwoWay}"
+                                   PlacementTarget="{Binding ElementName=CustomerSearchBox}"
+                                   Placement="Bottom"
+                                   Width="{Binding ActualWidth, ElementName=CustomerSearchRoot}"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Slide"
+                                   StaysOpen="False">
+
+                                <Border Background="White"
+                                        BorderBrush="#D5D8DC"
+                                        BorderThickness="1"
+                                        CornerRadius="0,0,8,8"
+                                        Margin="0,0,0,6">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#000000" Opacity="0.10"
+                                                          BlurRadius="12" ShadowDepth="4" Direction="270"/>
+                                    </Border.Effect>
+
+                                    <DockPanel>
+                                        <!-- Result count header -->
+                                        <Border DockPanel.Dock="Top"
+                                                Background="#F8F9FA"
+                                                BorderBrush="#EAECEE"
+                                                BorderThickness="0,0,0,1"
+                                                Padding="12,6">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="نتائج البحث: "
+                                                           FontSize="11" Foreground="#7F8C8D"/>
+                                                <TextBlock Text="{Binding FilteredCustomers.Count}"
+                                                           FontSize="11" FontWeight="Bold" Foreground="#2C3E50"/>
+                                                <TextBlock Text=" عميل"
+                                                           FontSize="11" Foreground="#7F8C8D"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Results list -->
+                                        <ScrollViewer MaxHeight="280"
+                                                      VerticalScrollBarVisibility="Auto"
+                                                      HorizontalScrollBarVisibility="Disabled">
+                                            <ItemsControl ItemsSource="{Binding FilteredCustomers}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Command="{Binding DataContext.SelectCustomerCommand,
+                                                                    RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                HorizontalContentAlignment="Stretch"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                Padding="0"
+                                                                Cursor="Hand">
+                                                            <Button.Template>
+                                                                <ControlTemplate TargetType="Button">
+                                                                    <Border x:Name="ItemBorder"
+                                                                            Background="Transparent"
+                                                                            BorderBrush="#EAECEE"
+                                                                            BorderThickness="0,0,0,1"
+                                                                            Padding="14,10">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                            </Grid.ColumnDefinitions>
+
+                                                                            <StackPanel Grid.Column="0">
+                                                                                <TextBlock Text="{Binding Name}"
+                                                                                           FontSize="13"
+                                                                                           FontWeight="SemiBold"
+                                                                                           Foreground="#2C3E50"/>
+                                                                                <TextBlock FontSize="11"
+                                                                                           Foreground="#7F8C8D"
+                                                                                           Margin="0,2,0,0">
+                                                                                    <Run Text="الرصيد: "/>
+                                                                                    <Run Text="{Binding Balance, StringFormat='{}{0:N2} ج.م'}"
+                                                                                         Foreground="#E67E22"
+                                                                                         FontWeight="Bold"/>
+                                                                                </TextBlock>
+                                                                            </StackPanel>
+
+                                                                            <!-- Customer type badge -->
+                                                                            <Border Grid.Column="1"
+                                                                                    CornerRadius="4"
+                                                                                    Padding="6,2"
+                                                                                    VerticalAlignment="Center">
+                                                                                <Border.Style>
+                                                                                    <Style TargetType="Border">
+                                                                                        <Setter Property="Background" Value="#EBF5FB"/>
+                                                                                        <Style.Triggers>
+                                                                                            <DataTrigger Binding="{Binding Type}"
+                                                                                                         Value="Hospital">
+                                                                                                <Setter Property="Background" Value="#EAF6FF"/>
+                                                                                            </DataTrigger>
+                                                                                            <DataTrigger Binding="{Binding Type}"
+                                                                                                         Value="Person">
+                                                                                                <Setter Property="Background" Value="#EAFAF1"/>
+                                                                                            </DataTrigger>
+                                                                                        </Style.Triggers>
+                                                                                    </Style>
+                                                                                </Border.Style>
+                                                                                <TextBlock FontSize="10"
+                                                                                           FontWeight="SemiBold">
+                                                                                    <TextBlock.Style>
+                                                                                        <Style TargetType="TextBlock">
+                                                                                            <Setter Property="Text" Value="فرد"/>
+                                                                                            <Setter Property="Foreground" Value="#27AE60"/>
+                                                                                            <Style.Triggers>
+                                                                                                <DataTrigger Binding="{Binding Type}"
+                                                                                                             Value="Hospital">
+                                                                                                    <Setter Property="Text" Value="مستشفى"/>
+                                                                                                    <Setter Property="Foreground" Value="#2E86C1"/>
+                                                                                                </DataTrigger>
+                                                                                            </Style.Triggers>
+                                                                                        </Style>
+                                                                                    </TextBlock.Style>
+                                                                                </TextBlock>
+                                                                            </Border>
+                                                                        </Grid>
+                                                                    </Border>
+                                                                    <ControlTemplate.Triggers>
+                                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                                            <Setter TargetName="ItemBorder"
+                                                                                    Property="Background"
+                                                                                    Value="#F2F6FC"/>
+                                                                        </Trigger>
+                                                                        <Trigger Property="IsPressed" Value="True">
+                                                                            <Setter TargetName="ItemBorder"
+                                                                                    Property="Background"
+                                                                                    Value="#D6EAF8"/>
+                                                                        </Trigger>
+                                                                    </ControlTemplate.Triggers>
+                                                                </ControlTemplate>
+                                                            </Button.Template>
+                                                        </Button>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </DockPanel>
+                                </Border>
+                            </Popup>
+                        </Grid>
                     </StackPanel>
 
                     <!-- Safe -->
@@ -74,7 +333,6 @@
                                                Binding="{Binding TotalAmount, StringFormat='{}{0:N2}'}" Width="*"/>
                             <DataGridTextColumn Header="المتبقي"
                                                Binding="{Binding RemainingAmount, StringFormat='{}{0:N2}'}" Width="*"/>
-
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>
@@ -153,9 +411,8 @@
                     Height="48" FontSize="15"
                     Content="⬇️  حفظ سند القبض"/>
 
-            <Button
-                    Style="{StaticResource SecondaryButton}"
-                    Background="#F0F8FF" 
+            <Button Style="{StaticResource SecondaryButton}"
+                    Background="#F0F8FF"
                     BorderBrush="#D6EAF8"
                     Foreground="#2E86C1"
                     Command="{Binding PrintCommand}"

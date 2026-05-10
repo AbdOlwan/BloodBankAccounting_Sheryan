@@ -4,9 +4,6 @@
     <_LastSelectedProfileId>D:\Work\Projects\DESK TOP\BloodBankAccounting\Properties\PublishProfiles\FolderProfile.pubxml</_LastSelectedProfileId>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Update="Views\AdminPasswordDialog.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Update="Views\OrganizationSettingsView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -14,9 +11,6 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="Views\PinDialog.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Update="Views\SecretAdminPanel.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="Views\TrialView.xaml.cs">

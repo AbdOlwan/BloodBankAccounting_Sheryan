@@ -2,23 +2,18 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!--
-        ✅ التغييرات للتجاوب:
-        1. شريط الفلتر: StackPanel Orientation="Horizontal" قد يتجاوز عرض الشاشة
-           → استبدلناه بـ Grid بأعمدة محددة تبقى على سطر واحد وتملأ العرض المتاح
-        2. زر العرض يمتد ليملأ العرض المتبقي بدل حجم ثابت
-        3. Margin الخارجي: "24" → "20"
-    -->
-
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <!-- فلتر التاريخ -->
+            <RowDefinition Height="Auto"/>
+            <!-- شريط البحث -->
             <RowDefinition Height="*"/>
+            <!-- الجدول -->
         </Grid.RowDefinitions>
 
-        <!-- Filter bar -->
-        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,14">
-            <!-- ✅ Grid بدل StackPanel: يضمن عدم تجاوز شريط الفلتر للعرض المتاح -->
+        <!-- ═══ Row 0: فلتر التاريخ ════════════════════════════════ -->
+        <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -28,25 +23,160 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0" Text="من:"
-                           VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <DatePicker Grid.Column="1"
-                            SelectedDate="{Binding From}" Margin="0,0,14,0"/>
-                <TextBlock Grid.Column="2" Text="إلى:"
-                           VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <DatePicker Grid.Column="3"
-                            SelectedDate="{Binding To}" Margin="0,0,14,0"/>
-                <!-- العمود 4 فارغ → يمتص المسافة المتبقية -->
-                <Button Grid.Column="5"
-                        Content="🔍  عرض"
+                <TextBlock Grid.Column="0" Text="من:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <DatePicker Grid.Column="1" SelectedDate="{Binding From}" Margin="0,0,14,0"/>
+                <TextBlock Grid.Column="2" Text="إلى:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <DatePicker Grid.Column="3" SelectedDate="{Binding To}" Margin="0,0,14,0"/>
+                <Button Grid.Column="5" Content="🔍  عرض"
                         Style="{StaticResource PrimaryButton}"
                         Command="{Binding LoadCommand}"/>
             </Grid>
         </Border>
 
-        <!-- Invoices grid -->
-        <Border Grid.Row="1" Style="{StaticResource Card}">
+        <!-- ═══ Row 1: شريط البحث الذكي ════════════════════════════ -->
+        <Border Grid.Row="1" Margin="0,0,0,10"
+                Background="White"
+                BorderThickness="1.5"
+                CornerRadius="12">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="BorderBrush" Value="#E5E8EC"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding ElementName=TxtSearch, Path=IsFocused}" Value="True">
+                            <Setter Property="BorderBrush" Value="#C0392B"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- أيقونة -->
+                    <ColumnDefinition Width="*"/>
+                    <!-- TextBox -->
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- عدد النتائج -->
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- زر مسح -->
+                </Grid.ColumnDefinitions>
+
+                <!-- أيقونة البحث -->
+                <Border Grid.Column="0" Padding="14,0,10,0"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="🔍" FontSize="16"
+                               VerticalAlignment="Center"
+                               Opacity="0.5"/>
+                </Border>
+
+                <!-- صندوق البحث -->
+                <TextBox Grid.Column="1"
+                         x:Name="TxtSearch"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="14"
+                         Padding="0,12"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         VerticalContentAlignment="Center">
+                    <TextBox.Template>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border Background="Transparent">
+                                <ScrollViewer x:Name="PART_ContentHost"
+                                              VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </TextBox.Template>
+                    <TextBox.InputBindings>
+                        <KeyBinding Key="Escape" Command="{Binding ClearSearchCommand}"/>
+                    </TextBox.InputBindings>
+                </TextBox>
+
+                <!-- Placeholder -->
+                <TextBlock Grid.Column="1"
+                           Text="ابحث بـ: رقم الفاتورة، اسم العميل، المبلغ، التاريخ، نوع الدفع..."
+                           Foreground="#BBBBBB" FontSize="13"
+                           Padding="0,12"
+                           VerticalAlignment="Center"
+                           IsHitTestVisible="False">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SearchText}" Value="">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <!-- عدد النتائج -->
+                <Border Grid.Column="2"
+                        Background="#F4F6F8"
+                        CornerRadius="20"
+                        Padding="10,4"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding ResultCount}"
+                                   FontSize="12" FontWeight="Bold"
+                                   Foreground="#1A2744"/>
+                        <TextBlock Text=" نتيجة"
+                                   FontSize="12"
+                                   Foreground="#566573"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- زر مسح البحث — يظهر فقط لما فيه نص -->
+                <Button Grid.Column="3"
+                        Margin="0,0,10,0"
+                        Width="28" Height="28"
+                        VerticalAlignment="Center"
+                        Command="{Binding ClearSearchCommand}"
+                        Cursor="Hand"
+                        ToolTip="مسح البحث (Escape)">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SearchText}" Value="">
+                                </DataTrigger>
+                                <DataTrigger>
+                                    <DataTrigger.Binding>
+                                        <Binding Path="SearchText.Length"
+                                                 FallbackValue="0"/>
+                                    </DataTrigger.Binding>
+                                    <DataTrigger.Value>0</DataTrigger.Value>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" CornerRadius="14"
+                                    Background="#E5E8EC" Width="28" Height="28">
+                                <TextBlock Text="✕" FontSize="11"
+                                           Foreground="#566573"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="#FADBD8"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- ═══ Row 2: جدول الفواتير ════════════════════════════════ -->
+        <Border Grid.Row="2" Style="{StaticResource Card}">
             <DataGrid Style="{StaticResource MainDataGrid}"
                       ItemsSource="{Binding Invoices}"
                       x:Name="InvoicesGrid">

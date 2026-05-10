@@ -250,8 +250,41 @@ public partial class InvoiceListViewModel : ViewModelBase
 {
     public ObservableCollection<Invoice> Invoices { get; } = [];
 
-    [ObservableProperty] private DateTime _from = DateTime.Today.AddMonths(-1);
+    // ─── كل الفواتير في الذاكرة للفلترة الفورية ──────────────────────
+    private List<Invoice> _allInvoices = [];
+
+    [ObservableProperty] private DateTime _from = DateTime.Today.AddDays(-2);
     [ObservableProperty] private DateTime _to = DateTime.Today;
+    [ObservableProperty] private string _searchText = string.Empty;
+    [ObservableProperty] private int _resultCount;
+
+    partial void OnSearchTextChanged(string _) => FilterInvoices();
+
+    private void FilterInvoices()
+    {
+        var q = SearchText.Trim();
+        var filtered = string.IsNullOrEmpty(q)
+            ? _allInvoices
+            : _allInvoices.Where(i =>
+                i.InvoiceNumber.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                (i.Customer?.Name?.Contains(q, StringComparison.OrdinalIgnoreCase) == true) ||
+                i.TotalAmount.ToString("N2").Contains(q) ||
+                i.PaidAmount.ToString("N2").Contains(q) ||
+                i.Date.ToString("d/M/yyyy").Contains(q) ||
+                (i.PaymentType == PaymentType.Cash && "نقدي".Contains(q)) ||
+                (i.PaymentType == PaymentType.Credit && "آجل".Contains(q)) ||
+                (i.PaymentType == PaymentType.Partial && "جزئي".Contains(q)) ||
+                (i.IsCancelled && "ملغي".Contains(q)) ||
+                (!i.IsCancelled && "مكتمل".Contains(q))
+            ).ToList();
+
+        Invoices.Clear();
+        filtered.ForEach(Invoices.Add);
+        ResultCount = filtered.Count;
+    }
+
+    [RelayCommand]
+    private void ClearSearch() => SearchText = string.Empty;
 
     public InvoiceListViewModel() { _ = LoadAsync(); }
 
@@ -259,13 +292,14 @@ public partial class InvoiceListViewModel : ViewModelBase
     private async Task LoadAsync()
     {
         using var db = new AppDbContext();
-        var list = await db.Invoices
+        _allInvoices = await db.Invoices
                                .Include(i => i.Customer)
                                .Where(i => i.Date.Date >= From && i.Date.Date <= To)
                                .OrderByDescending(i => i.Date)
                                .ToListAsync();
-        Invoices.Clear();
-        list.ForEach(Invoices.Add);
+        // نستدعي FilterInvoices مباشرة بدل الاعتماد على SearchText change
+        // لأن لو SearchText فاضية أصلاً مش هيطلق الـ event
+        FilterInvoices();
     }
 
     [RelayCommand]
@@ -274,41 +308,129 @@ public partial class InvoiceListViewModel : ViewModelBase
         await InvoicePrinter.PrintAsync(invoice.Id);
     }
 
+    // ════════════════════════════════════════════════════════════
+    //  استبدل الـ method الموجودة في InvoiceListViewModel
+    //  السطور 277–312 في AllViewModels.cs
+    // ════════════════════════════════════════════════════════════
+
     [RelayCommand]
     private async Task CancelInvoiceAsync(Invoice invoice)
     {
-        if (!Confirm($"إلغاء الفاتورة {invoice.InvoiceNumber}؟")) return;
-        using var db = new AppDbContext();
-        var inv = await db.Invoices.Include(i => i.Lines).FirstAsync(i => i.Id == invoice.Id);
-        inv.IsCancelled = true;
-        inv.CancelReason = "إلغاء يدوي";
-
-        foreach (var line in inv.Lines)
+        // ── 1. Validation أساسي ──────────────────────────────────
+        if (invoice.IsCancelled)
         {
-            var bag = await db.BloodBags.FindAsync(line.BloodBagId);
-            if (bag is not null) bag.Status = BloodBagStatus.Available;
+            ShowError($"الفاتورة {invoice.InvoiceNumber} ملغاة بالفعل.");
+            return;
         }
 
-        switch (inv.PaymentType)
-        {
-            case PaymentType.Credit:
-                var cCredit = await db.Customers.FindAsync(inv.CustomerId);
-                cCredit!.Balance -= inv.TotalAmount;
-                break;
+        // ── 2. طلب سبب الإلغاء ──────────────────────────────────
+        var reason = Views.InputDialog.Show(
+            $"سبب إلغاء الفاتورة {invoice.InvoiceNumber}",
+            "إلغاء فاتورة",
+            System.Windows.Application.Current.MainWindow);
 
-            case PaymentType.Partial:
-                var cPartial = await db.Customers.FindAsync(inv.CustomerId);
-                cPartial!.Balance -= inv.RemainingAmount;
-                if (inv.SafeId.HasValue)
-                {
-                    var safeP = await db.Safes.FindAsync(inv.SafeId);
-                    safeP!.Balance -= inv.PaidAmount;
-                }
-                break;
+        if (reason is null) return;          // المستخدم ضغط إلغاء
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            ShowError("يجب إدخال سبب الإلغاء.");
+            return;
         }
 
-        await db.SaveChangesAsync();
-        await LoadAsync();
+        // ── 3. تأكيد نهائي ───────────────────────────────────────
+        if (!Confirm(
+            $"تأكيد إلغاء الفاتورة {invoice.InvoiceNumber}\n" +
+            $"السبب: {reason}\n\n" +
+            "سيتم عكس جميع الأثار المالية — هل أنت متأكد؟"))
+            return;
+
+        IsBusy = true;
+        try
+        {
+            using var db = new AppDbContext();
+            await using var tx = await db.Database.BeginTransactionAsync();
+
+            // تحميل الفاتورة مع كل البيانات المرتبطة
+            var inv = await db.Invoices
+                .Include(i => i.Lines)
+                .Include(i => i.JournalEntries)
+                .FirstOrDefaultAsync(i => i.Id == invoice.Id);
+
+            if (inv is null)
+            {
+                ShowError("لم يتم العثور على الفاتورة في قاعدة البيانات.");
+                return;
+            }
+
+            // تحقق مجدداً (race condition protection)
+            if (inv.IsCancelled)
+            {
+                ShowError($"الفاتورة {inv.InvoiceNumber} ملغاة بالفعل.");
+                return;
+            }
+
+            // ── 4. عكس حالة أكياس الدم ───────────────────────────
+            foreach (var line in inv.Lines)
+            {
+                if (!line.BloodBagId.HasValue) continue;   // صنف يدوي — لا شيء
+                var bag = await db.BloodBags.FindAsync(line.BloodBagId.Value);
+                if (bag is not null) bag.Status = BloodBagStatus.Available;
+            }
+
+            // ── 5. عكس الأثر المالي حسب نوع الدفع ───────────────
+            switch (inv.PaymentType)
+            {
+                // نقدي: المبلغ كله دخل الخزينة → نخصمه منها
+                case PaymentType.Cash:
+                    if (inv.SafeId.HasValue)
+                    {
+                        var safeCash = await db.Safes.FindAsync(inv.SafeId.Value);
+                        if (safeCash is not null)
+                            safeCash.Balance -= inv.TotalAmount;
+                    }
+                    break;
+
+                // آجل: المبلغ كله أُضيف لدين العميل → نخصمه منه
+                case PaymentType.Credit:
+                    var cCredit = await db.Customers.FindAsync(inv.CustomerId);
+                    if (cCredit is not null)
+                        cCredit.Balance -= inv.TotalAmount;
+                    break;
+
+                // جزئي: جزء دخل الخزينة + جزء دين على العميل
+                case PaymentType.Partial:
+                    var cPartial = await db.Customers.FindAsync(inv.CustomerId);
+                    if (cPartial is not null)
+                        cPartial.Balance -= inv.RemainingAmount;   // الدين المتبقي
+
+                    if (inv.SafeId.HasValue)
+                    {
+                        var safePartial = await db.Safes.FindAsync(inv.SafeId.Value);
+                        if (safePartial is not null)
+                            safePartial.Balance -= inv.PaidAmount;   // المقبوض فعلاً
+                    }
+                    break;
+            }
+
+            // ── 6. حذف القيود المحاسبية المرتبطة ────────────────
+            if (inv.JournalEntries.Any())
+                db.JournalEntries.RemoveRange(inv.JournalEntries);
+
+            // ── 7. تسجيل الإلغاء ─────────────────────────────────
+            inv.IsCancelled = true;
+            inv.CancelReason = reason.Trim();
+
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            ShowSuccess($"تم إلغاء الفاتورة {inv.InvoiceNumber} وعكس جميع آثارها المالية ✓");
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.InnerException?.Message ?? ex.Message;
+            ShowError($"حدث خطأ أثناء الإلغاء:\n{msg}");
+        }
+        finally { IsBusy = false; }
     }
 }
 

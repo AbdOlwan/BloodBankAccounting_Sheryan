@@ -48,28 +48,13 @@ public partial class App : Application
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         main.Show();
 
-        // ─── 4. بدء النسخ الاحتياطي التلقائي ─────────────────────────
-        // يبدأ بعد ما الـ MainWindow يتفتح حتى لا يؤثر على وقت التحميل.
-        // يعمل في الخلفية — لا يوقف واجهة المستخدم.
-        AutoBackupService.Instance.BackupFailed += OnAutoBackupFailed;
-        AutoBackupService.Instance.Start();
+
     }
 
     // ─── عرض إشعار صامت لو فشل الـ Backup (اختياري) ──────────────────
-    private void OnAutoBackupFailed(Exception ex)
-    {
-        // نُبلّغ على الـ UI Thread
-        Dispatcher.InvokeAsync(() =>
-        {
-            // رسالة خفيفة في الـ Title Bar بدل MessageBox مزعجة
-            if (MainWindow is not null)
-                MainWindow.Title = "بنك الدم — نظام المحاسبة  ⚠ فشل النسخ الاحتياطي";
-        });
-    }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        AutoBackupService.Instance.Dispose();
         base.OnExit(e);
     }
 }

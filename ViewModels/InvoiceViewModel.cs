@@ -85,6 +85,8 @@ public partial class InvoiceViewModel : ViewModelBase
         "فلترة كيس دم",
         "غسيل كيس دم",
         "كيس دم اطفال",
+        "كرات دم مكدسه موجب",
+        "كرات دم مكدسه سالب"
     ];
 
     public InvoiceViewModel() { _ = LoadAsync(); }
