@@ -79,9 +79,29 @@
         <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,10">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="الخزينة:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <!-- داخل Row 1، بعد ComboBox الخزينة وقبل TextBlock "من:" -->
+                <ToggleButton x:Name="CombinedToggle"
+              IsChecked="{Binding ShowCombined}"
+              Margin="0,0,16,0"
+              Height="30" Width="100">
+                    <ToggleButton.Style>
+                        <Style TargetType="{x:Type ToggleButton}">
+                            <Setter Property="Content" Value="عرض مجمع"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter Property="Content" Value="عرض منفصل"/>
+                                    <Setter Property="Background" Value="#C0392B"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                    <Setter Property="BorderBrush" Value="#C0392B"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
                 <ComboBox ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}"
                           DisplayMemberPath="Name"
                           Style="{StaticResource FormComboBox}" Width="180" Margin="0,0,16,0"/>
+
                 <TextBlock Text="من:" VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <DatePicker SelectedDate="{Binding From}" Margin="0,0,16,0"/>
                 <TextBlock Text="إلى:" VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -311,32 +331,74 @@
                                             RelativeSource={RelativeSource AncestorType=UserControl},
                                             Converter={StaticResource BoolToVis}}"/>
 
-                    <!-- زر طباعة لكل صف -->
-                    <DataGridTemplateColumn Header="طباعة" Width="90">
+                    <!-- ══ عمود الإجراءات: طباعة + تعديل (للفواتير فقط) ══ -->
+                    <DataGridTemplateColumn Header="إجراءات" Width="170">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Width="70" Height="28" Cursor="Hand"
-                                        ToolTip="طباعة تفاصيل هذه الحركة"
-                                        Command="{Binding DataContext.PrintEntryCommand,
-                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                        CommandParameter="{Binding}">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border x:Name="rb" CornerRadius="6" Background="#C0392B">
-                                                <TextBlock Text="&#x1F5A8;&#xFE0F; طباعة"
-                                                           Foreground="White" FontSize="11"
-                                                           FontWeight="SemiBold"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="rb" Property="Background" Value="#922B21"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
+                                <StackPanel Orientation="Horizontal"
+                                            VerticalAlignment="Center"
+                                            Margin="4,0">
+
+                                    <!-- 🖨 طباعة -->
+                                    <Button Width="70" Height="28" Cursor="Hand"
+                                            ToolTip="طباعة تفاصيل هذه الحركة"
+                                            Margin="0,0,6,0"
+                                            Command="{Binding DataContext.PrintEntryCommand,
+                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="rb" CornerRadius="6" Background="#C0392B">
+                                                    <TextBlock Text="&#x1F5A8;&#xFE0F; طباعة"
+                                                               Foreground="White" FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="rb" Property="Background" Value="#922B21"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+
+                                    <!-- ✏️ تعديل — يظهر فقط للحركات من نوع فاتورة -->
+                                    <Button Width="70" Height="28" Cursor="Hand"
+                                            ToolTip="تعديل هذه الفاتورة (يتطلب الرمز السري)"
+                                            Command="{Binding DataContext.EditInvoiceEntryCommand,
+                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding RefType}" Value="Invoice">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="eb" CornerRadius="6" Background="#1A5276">
+                                                    <TextBlock Text="✏️ تعديل"
+                                                               Foreground="White" FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="eb" Property="Background" Value="#154360"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+
+                                </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

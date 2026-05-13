@@ -1,0 +1,509 @@
+This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching these patterns are excluded: **/Migrations/**, **/obj/**, **/bin/**, **/Properties/**
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+ArabicNumberHelper.cs
+JournalService.cs
+NumberGenerator.cs
+PinHelper.cs
+TrialManager.cs
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="ArabicNumberHelper.cs">
+namespace BloodBankAccounting.Helpers;
+
+/// <summary>
+/// تحويل الأرقام إلى كلمات عربية لطباعة سندات القبض والدفع.
+/// يدعم حتى 999,999,999.99
+/// </summary>
+public static class ArabicNumberHelper
+{
+    private static readonly string[] Units =
+    [
+        "", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة",
+        "ستة", "سبعة", "ثمانية", "تسعة", "عشرة",
+        "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر",
+        "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"
+    ];
+
+    private static readonly string[] Tens =
+    [
+        "", "عشرة", "عشرون", "ثلاثون", "أربعون", "خمسون",
+        "ستون", "سبعون", "ثمانون", "تسعون"
+    ];
+
+    private static readonly string[] Hundreds =
+    [
+        "", "مائة", "مئتان", "ثلاثمائة", "أربعمائة", "خمسمائة",
+        "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"
+    ];
+
+    /// <summary>
+    /// مثال: 1350.50 → "ألف وثلاثمائة وخمسون جنيهًا وخمسون قرشًا فقط لا غير"
+    /// </summary>
+    public static string ToWords(decimal amount)
+    {
+        if (amount == 0) return "صفر جنيه فقط لا غير";
+
+        var whole = (long)Math.Truncate(amount);
+        var fraction = (int)Math.Round((amount - whole) * 100);
+
+        var result = ConvertWholeNumber(whole) + " جنيه";
+        if (fraction > 0)
+            result += $" و{ConvertWholeNumber(fraction)} قرش";
+
+        return result + " فقط لا غير";
+    }
+
+    private static string ConvertWholeNumber(long n)
+    {
+        if (n <= 0) return "صفر";
+
+        var parts = new List<string>();
+
+        if (n >= 1_000_000)
+        {
+            var m = n / 1_000_000;
+            n %= 1_000_000;
+            parts.Add(ConvertChunk((int)m) + (m == 1 ? " مليون" : m == 2 ? " مليونان" : " مليون"));
+        }
+
+        if (n >= 1_000)
+        {
+            var t = n / 1_000;
+            n %= 1_000;
+            if (t == 1) parts.Add("ألف");
+            else if (t == 2) parts.Add("ألفان");
+            else if (t <= 10) parts.Add(ConvertChunk((int)t) + " آلاف");
+            else parts.Add(ConvertChunk((int)t) + " ألف");
+        }
+
+        if (n > 0) parts.Add(ConvertChunk((int)n));
+
+        return string.Join(" و", parts);
+    }
+
+    private static string ConvertChunk(int n)
+    {
+        if (n == 0) return "";
+
+        var parts = new List<string>();
+
+        int h = n / 100;
+        if (h > 0) { parts.Add(Hundreds[h]); n %= 100; }
+
+        if (n >= 20)
+        {
+            int t = n / 10;
+            int u = n % 10;
+            parts.Add(u > 0 ? Units[u] + " و" + Tens[t] : Tens[t]);
+        }
+        else if (n > 0)
+        {
+            parts.Add(Units[n]);
+        }
+
+        return string.Join(" و", parts);
+    }
+}
+</file>
+
+<file path="JournalService.cs">
+using BloodBankAccounting.Data;
+using BloodBankAccounting.Models;
+
+namespace BloodBankAccounting.Helpers;
+
+public static class AccountCodes
+{
+    public const string Cash = "1001";   // الخزينة النقدية
+    public const string Bank = "1002";   // البنك
+    public const string Electronic = "1003";   // الخزينة الإلكترونية ← جديد
+    public const string AccountsRec = "1100";   // ذمم مدينة (آجل)
+    public const string BloodInventory = "1200";   // مخزون الدم
+    public const string Sales = "4001";   // إيرادات المبيعات
+    public const string COGS = "5001";   // تكلفة المبيعات
+    public const string Expenses = "6001";   // المصاريف العمومية
+}
+
+public static class JournalService
+{
+    // ─── Helper: يستنتج كود الحساب من نوع الخزينة ─────────────
+    public static string GetSafeAccountCode(Safe safe)
+    {
+        return safe.Type switch
+        {
+            SafeType.Electronic => AccountCodes.Electronic,
+            SafeType.Bank => AccountCodes.Bank,
+            _ => AccountCodes.Cash
+        };
+    }
+
+    // ─── فاتورة نقدي أو إلكتروني ─────────────────────────────
+    public static void PostInvoice(AppDbContext db, Invoice invoice, Safe safe)
+    {
+        var safeCode = GetSafeAccountCode(safe);
+        var entries = new List<JournalEntry>();
+        var date = invoice.Date;
+        var refId = invoice.Id;
+
+        if (invoice.PaymentType == PaymentType.Cash || invoice.PaymentType == PaymentType.Electronic)
+        {
+            entries.Add(Debit(date, safeCode, safe.Name, invoice.TotalAmount, "Invoice", refId, invoice.Id));
+            entries.Add(Credit(date, AccountCodes.Sales, "إيرادات المبيعات", invoice.TotalAmount, "Invoice", refId, invoice.Id));
+        }
+        else // آجل أو جزئي – سيتم التعامل معه بشكل منفصل
+        {
+            entries.Add(Debit(date, AccountCodes.AccountsRec, $"ذمم - {invoice.Customer?.Name}", invoice.TotalAmount, "Invoice", refId, invoice.Id));
+            entries.Add(Credit(date, AccountCodes.Sales, "إيرادات المبيعات", invoice.TotalAmount, "Invoice", refId, invoice.Id));
+        }
+
+        db.JournalEntries.AddRange(entries);
+    }
+
+    // ─── فاتورة جزئي ─────────────────────────────────────────
+    public static void PostPartialInvoice(AppDbContext db, Invoice invoice, decimal initialPayment, Safe safe)
+    {
+        var safeCode = GetSafeAccountCode(safe);
+        var remaining = invoice.TotalAmount - initialPayment;
+        var date = invoice.Date;
+        var refId = invoice.Id;
+        var name = invoice.Customer?.Name ?? "";
+        var entries = new List<JournalEntry>();
+
+        if (initialPayment > 0)
+            entries.Add(Debit(date, safeCode, safe.Name, initialPayment, "Invoice", refId, invoice.Id));
+
+        if (remaining > 0)
+            entries.Add(Debit(date, AccountCodes.AccountsRec, $"ذمم - {name}", remaining, "Invoice", refId, invoice.Id));
+
+        entries.Add(Credit(date, AccountCodes.Sales, "إيرادات المبيعات", invoice.TotalAmount, "Invoice", refId, invoice.Id));
+
+        db.JournalEntries.AddRange(entries);
+    }
+
+    // ─── سند قبض ─────────────────────────────────────────────
+    public static void PostReceipt(AppDbContext db, ReceiptVoucher voucher, Safe safe)
+    {
+        var safeCode = GetSafeAccountCode(safe);
+        var entries = new[]
+        {
+            Debit (voucher.Date, safeCode,          safe.Name,                          voucher.Amount, "Receipt", voucher.Id, receiptId: voucher.Id),
+            Credit(voucher.Date, AccountCodes.AccountsRec, $"ذمم - {voucher.Customer?.Name}", voucher.Amount, "Receipt", voucher.Id, receiptId: voucher.Id)
+        };
+        db.JournalEntries.AddRange(entries);
+    }
+
+    // ─── سند دفع ─────────────────────────────────────────────
+    public static void PostPayment(AppDbContext db, ReceiptVoucher voucher, Safe safe)
+    {
+        var safeCode = GetSafeAccountCode(safe);
+        var payee = voucher.PayeeName ?? "—";
+        var entries = new[]
+        {
+            Debit (voucher.Date, AccountCodes.Expenses, $"مصاريف - {payee}", voucher.Amount, "Payment", voucher.Id, receiptId: voucher.Id),
+            Credit(voucher.Date, safeCode,              safe.Name,             voucher.Amount, "Payment", voucher.Id, receiptId: voucher.Id)
+        };
+        db.JournalEntries.AddRange(entries);
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────
+    private static JournalEntry Debit(DateTime date, string code, string name, decimal amount,
+        string refType, int refId, int? invoiceId = null, int? receiptId = null)
+        => new()
+        {
+            Date = date,
+            AccountCode = code,
+            AccountName = name,
+            DebitAmount = amount,
+            CreditAmount = 0,
+            RefType = refType,
+            RefId = refId,
+            InvoiceId = invoiceId,
+            ReceiptVoucherId = receiptId,
+            CreatedAt = DateTime.Now
+        };
+
+    private static JournalEntry Credit(DateTime date, string code, string name, decimal amount,
+        string refType, int refId, int? invoiceId = null, int? receiptId = null)
+        => new()
+        {
+            Date = date,
+            AccountCode = code,
+            AccountName = name,
+            DebitAmount = 0,
+            CreditAmount = amount,
+            RefType = refType,
+            RefId = refId,
+            InvoiceId = invoiceId,
+            ReceiptVoucherId = receiptId,
+            CreatedAt = DateTime.Now
+        };
+}
+</file>
+
+<file path="NumberGenerator.cs">
+using BloodBankAccounting.Data;
+using BloodBankAccounting.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace BloodBankAccounting.Helpers;
+
+public static class NumberGenerator
+{
+    public static async Task<string> NextInvoiceNumberAsync(AppDbContext db)
+    {
+        var year = DateTime.Now.Year;
+        var count = await db.Invoices.CountAsync(x => x.CreatedAt.Year == year);
+        return $"INV-{year}-{(count + 1):D5}";
+    }
+
+    /// <summary>??? ???</summary>
+    public static async Task<string> NextVoucherNumberAsync(AppDbContext db)
+    {
+        var year = DateTime.Now.Year;
+        var count = await db.ReceiptVouchers
+            .CountAsync(x => x.Type == VoucherType.Receipt && x.CreatedAt.Year == year);
+        return $"RCV-{year}-{(count + 1):D5}";
+    }
+
+    /// <summary>??? ???</summary>
+    public static async Task<string> NextPaymentVoucherNumberAsync(AppDbContext db)
+    {
+        var year = DateTime.Now.Year;
+        var count = await db.ReceiptVouchers
+            .CountAsync(x => x.Type == VoucherType.Payment && x.CreatedAt.Year == year);
+        return $"PAY-{year}-{(count + 1):D5}";
+    }
+}
+</file>
+
+<file path="PinHelper.cs">
+using System.Security.Cryptography;
+using System.Text;
+
+namespace BloodBankAccounting.Helpers;
+
+public static class PinHelper
+{
+    /// <summary>تحويل الرمز السري إلى hash بـ SHA-256</summary>
+    public static string Hash(string pin)
+    {
+        if (string.IsNullOrWhiteSpace(pin)) return string.Empty;
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(pin.Trim()));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    /// <summary>التحقق من صحة الرمز المُدخَل</summary>
+    public static bool Verify(string pin, string storedHash)
+        => !string.IsNullOrEmpty(storedHash) && Hash(pin) == storedHash;
+}
+</file>
+
+<file path="TrialManager.cs">
+using Microsoft.Win32;
+using System.IO;
+using System.Management;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace BloodBankAccounting.Helpers;
+
+/// <summary>
+/// نظام التجربة والتفعيل — حماية البرنامج من النسخ غير المرخّصة
+/// </summary>
+public static class TrialManager
+{
+    private const int TRIAL_DAYS = 20;
+    // ⚠️ يجب أن يطابق تماماً قيمة SECRET في KeyGeneratorTool.csx
+    private const string SECRET = "SH3RY4N_BL00D_B4NK_2025_S3CR3T!";
+
+    // مسار الريجستري — تحت CurrentUser لتجنّب الحاجة لأذونات المسؤول
+    private const string REG_PATH = @"SOFTWARE\Classes\Applications\BloodBankApp\Config";
+    private const string VAL_INSTALL = "Cfg1";
+    private const string VAL_LICENSE = "Cfg2";
+
+    // ── Public API ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// يُرجع معرّف الجهاز الفريد بصيغة XXXX-XXXX-XXXX
+    /// مبني على CPU ID + رقم تسلسل قرص النظام
+    /// </summary>
+    public static string GetMachineId()
+    {
+        var raw = $"{GetCpuId()}|{GetVolumeSerial()}";
+
+        using var sha = SHA256.Create();
+        var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(raw));
+        var hex = BitConverter.ToString(hash, 0, 6).Replace("-", "").ToUpper();
+
+        return $"{hex[..4]}-{hex[4..8]}-{hex[8..12]}";
+    }
+
+    /// <summary>
+    /// الأيام المتبقية من فترة التجربة.
+    /// يُرجع int.MaxValue إذا كان البرنامج مفعّلاً.
+    /// </summary>
+    public static int DaysRemaining()
+    {
+        if (IsActivated()) return int.MaxValue;
+
+        var installDate = GetOrSetInstallDate();
+        var elapsed = (int)(DateTime.Now - installDate).TotalDays;
+        return Math.Max(0, TRIAL_DAYS - elapsed);
+    }
+
+    /// <summary>هل يحق للبرنامج أن يعمل؟ (مفعّل أو التجربة لم تنته)</summary>
+    public static bool CanRun() => IsActivated() || DaysRemaining() > 0;
+
+    /// <summary>هل البرنامج مفعّل بكود صحيح مسجّل على هذا الجهاز؟</summary>
+    public static bool IsActivated()
+    {
+        var stored = ReadReg(VAL_LICENSE);
+        return !string.IsNullOrEmpty(stored)
+            && stored == ComputeKey(GetMachineId());
+    }
+
+    /// <summary>
+    /// محاولة تفعيل البرنامج بالكود المُدخَل.
+    /// يُرجع true عند النجاح ويحفظ الترخيص في الريجستري.
+    /// </summary>
+    public static bool Activate(string inputKey)
+    {
+        var normalized = inputKey.Trim().ToUpper();
+        var expected = ComputeKey(GetMachineId());
+
+        if (normalized != expected) return false;
+
+        WriteReg(VAL_LICENSE, expected);
+        return true;
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// يحسب كود التفعيل المتوقع لهذا الجهاز.
+    /// نفس الخوارزمية المستخدمة في KeyGeneratorTool.csx.
+    /// </summary>
+    private static string ComputeKey(string machineId)
+    {
+        var key = Encoding.UTF8.GetBytes(SECRET);
+        var data = Encoding.UTF8.GetBytes(machineId.ToUpper());
+
+        using var hmac = new HMACSHA256(key);
+        var hash = hmac.ComputeHash(data);
+        var hex = BitConverter.ToString(hash, 0, 8).Replace("-", "").ToUpper();
+
+        return $"{hex[..4]}-{hex[4..8]}-{hex[8..12]}-{hex[12..16]}";
+    }
+
+    /// <summary>يجلب تاريخ أول تشغيل، أو يحفظ اليوم إذا كانت أول مرة.</summary>
+    private static DateTime GetOrSetInstallDate()
+    {
+        var val = ReadReg(VAL_INSTALL);
+
+        if (!string.IsNullOrEmpty(val) &&
+            DateTime.TryParseExact(val, "yyyyMMdd", null,
+                System.Globalization.DateTimeStyles.None, out var date))
+            return date;
+
+        // أول تشغيل — سجّل التاريخ
+        WriteReg(VAL_INSTALL, DateTime.Now.ToString("yyyyMMdd"));
+        return DateTime.Now;
+    }
+
+    private static string GetCpuId()
+    {
+        try
+        {
+            using var s = new ManagementObjectSearcher(
+                "SELECT ProcessorId FROM Win32_Processor");
+            foreach (ManagementObject o in s.Get())
+                return o["ProcessorId"]?.ToString()?.Trim() ?? "CPU_UNKNOWN";
+        }
+        catch { /* WMI غير متاح */ }
+        return "CPU_UNKNOWN";
+    }
+
+    private static string GetVolumeSerial()
+    {
+        try
+        {
+            var drive = Path.GetPathRoot(
+                Environment.GetFolderPath(Environment.SpecialFolder.System))
+                ?.TrimEnd('\\');
+
+            using var s = new ManagementObjectSearcher(
+                $"SELECT VolumeSerialNumber FROM Win32_LogicalDisk WHERE DeviceID='{drive}'");
+            foreach (ManagementObject o in s.Get())
+                return o["VolumeSerialNumber"]?.ToString()?.Trim() ?? "VOL_UNKNOWN";
+        }
+        catch { /* WMI غير متاح */ }
+        return "VOL_UNKNOWN";
+    }
+
+    private static string? ReadReg(string name)
+    {
+        try
+        {
+            using var k = Registry.CurrentUser.OpenSubKey(REG_PATH);
+            return k?.GetValue(name)?.ToString();
+        }
+        catch { return null; }
+    }
+
+    private static void WriteReg(string name, string value)
+    {
+        try
+        {
+            using var k = Registry.CurrentUser.CreateSubKey(REG_PATH, writable: true);
+            k?.SetValue(name, value);
+        }
+        catch { /* silent fail — مش هيأثر على التشغيل */ }
+    }
+}
+</file>
+
+</files>

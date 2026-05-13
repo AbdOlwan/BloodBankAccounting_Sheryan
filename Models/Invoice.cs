@@ -30,4 +30,5 @@ public class Invoice
     public ICollection<InvoiceLine> Lines { get; set; } = [];
     public ICollection<ReceiptVoucher> ReceiptVouchers { get; set; } = [];
     public ICollection<JournalEntry> JournalEntries { get; set; } = [];
+    public ElectronicPaymentDetail? ElectronicDetail { get; set; }
 }

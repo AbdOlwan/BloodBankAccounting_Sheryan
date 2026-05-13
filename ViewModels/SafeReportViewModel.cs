@@ -48,15 +48,11 @@ public partial class SafeReportViewModel : ViewModelBase
     // ════════════════════════════════════════════════════════════
     public ObservableCollection<Safe> Safes { get; } = [];
 
-    /// <summary>جميع الحركات المحمّلة من DB (المصدر الكامل)</summary>
     private readonly ObservableCollection<SafeEntryRow> _allEntries = [];
-
-    /// <summary>الحركات المعروضة في الجدول بعد تطبيق البحث النصي</summary>
     public ObservableCollection<SafeEntryRow> Entries { get; } = [];
 
     [ObservableProperty] private Safe? _selectedSafe;
 
-    // ── النطاق الزمني — الافتراضي: آخر يوم واحد فقط ──────────────────
     [ObservableProperty] private DateTime _from = DateTime.Today;
     [ObservableProperty] private DateTime _to = DateTime.Today;
 
@@ -66,23 +62,23 @@ public partial class SafeReportViewModel : ViewModelBase
     [ObservableProperty] private decimal _totalCredit;
 
     // ════════════════════════════════════════════════════════════
+    //  فلتر المجمع/المنفصل (جديد)
+    // ════════════════════════════════════════════════════════════
+    [ObservableProperty] private bool _showCombined = false;
+
+    partial void OnShowCombinedChanged(bool value) => _ = LoadStatementAsync();
+
+    // ════════════════════════════════════════════════════════════
     //  البحث النصي
     // ════════════════════════════════════════════════════════════
     [ObservableProperty] private string _searchText = string.Empty;
-
-    /// <summary>عدد النتائج بعد الفلترة — يُعرض في الـ UI</summary>
     public int FilteredCount => Entries.Count;
 
     partial void OnSearchTextChanged(string value) => ApplySearch();
 
-    /// <summary>
-    /// يُفلتر _allEntries بناءً على SearchText ويُحدّث Entries.
-    /// البحث يشمل: التاريخ، النوع، البيان، المبالغ.
-    /// </summary>
     private void ApplySearch()
     {
         var term = SearchText?.Trim() ?? string.Empty;
-
         Entries.Clear();
 
         var filtered = string.IsNullOrEmpty(term)
@@ -95,17 +91,12 @@ public partial class SafeReportViewModel : ViewModelBase
                 e.Credit.ToString("N2").Contains(term) ||
                 e.Balance.ToString("N2").Contains(term));
 
-        foreach (var row in filtered)
-            Entries.Add(row);
-
+        foreach (var row in filtered) Entries.Add(row);
         OnPropertyChanged(nameof(FilteredCount));
     }
 
     [RelayCommand]
-    private void ClearSearch()
-    {
-        SearchText = string.Empty;   // OnSearchTextChanged → ApplySearch
-    }
+    private void ClearSearch() => SearchText = string.Empty;
 
     // ════════════════════════════════════════════════════════════
     //  تحميل
@@ -122,7 +113,6 @@ public partial class SafeReportViewModel : ViewModelBase
 
         var org = await db.OrgSettings.FirstOrDefaultAsync();
         _ownerPinHash = org?.OwnerPinHash ?? string.Empty;
-
         IsFinancialUnlocked = string.IsNullOrEmpty(_ownerPinHash);
     }
 
@@ -131,32 +121,37 @@ public partial class SafeReportViewModel : ViewModelBase
         if (value is not null) _ = LoadStatementAsync();
     }
 
-    // ── التاريخ لا يُحمّل تلقائياً — فقط عبر زر "عرض" ──────────────────
-    // (تم حذف partial void OnFromChanged / OnToChanged العتيقتين)
-
     [RelayCommand]
     private async Task LoadStatementAsync()
     {
-        if (SelectedSafe is null) return;
+        if (SelectedSafe is null && !ShowCombined) return;
 
         using var db = new AppDbContext();
 
-        var safeCode = SelectedSafe.Type == SafeType.Cash
-            ? AccountCodes.Cash   // "1001"
-            : AccountCodes.Bank;  // "1002"
+        // تحديد أكواد الحسابات المطلوبة
+        string[] safeCodes;
+        if (ShowCombined)
+        {
+            safeCodes = new[] { AccountCodes.Cash, AccountCodes.Electronic, AccountCodes.Bank };
+        }
+        else
+        {
+            var code = JournalService.GetSafeAccountCode(SelectedSafe!);
+            safeCodes = new[] { code };
+        }
 
         var beforeDebit = await db.JournalEntries
-            .Where(j => j.Date < From && j.AccountCode == safeCode)
+            .Where(j => j.Date < From && safeCodes.Contains(j.AccountCode))
             .SumAsync(j => (decimal?)j.DebitAmount) ?? 0;
 
         var beforeCredit = await db.JournalEntries
-            .Where(j => j.Date < From && j.AccountCode == safeCode)
+            .Where(j => j.Date < From && safeCodes.Contains(j.AccountCode))
             .SumAsync(j => (decimal?)j.CreditAmount) ?? 0;
 
         OpeningBalance = beforeDebit - beforeCredit;
 
         var entries = await db.JournalEntries
-            .Where(j => j.Date >= From && j.Date <= To && j.AccountCode == safeCode)
+            .Where(j => j.Date >= From && j.Date <= To && safeCodes.Contains(j.AccountCode))
             .OrderBy(j => j.Date)
             .ToListAsync();
 
@@ -189,22 +184,21 @@ public partial class SafeReportViewModel : ViewModelBase
         TotalCredit = entries.Sum(e => e.CreditAmount);
         ClosingBalance = runningBalance;
 
-        // تطبيق أي بحث موجود على البيانات الجديدة
         ApplySearch();
     }
 
     // ════════════════════════════════════════════════════════════
-    //  طباعة الكشف كله
+    //  طباعة
     // ════════════════════════════════════════════════════════════
     [RelayCommand]
     private async Task PrintAsync()
     {
-        if (SelectedSafe is null) { ShowError("اختر الخزينة أولاً"); return; }
+        if (!ShowCombined && SelectedSafe is null) { ShowError("اختر الخزينة أولاً"); return; }
         IsBusy = true;
         try
         {
             await SafeStatementPrinter.PrintAsync(
-                SelectedSafe.Name,
+                ShowCombined ? "جميع الخزائن" : SelectedSafe!.Name,
                 From, To,
                 OpeningBalance, ClosingBalance,
                 TotalDebit, TotalCredit,
@@ -213,9 +207,6 @@ public partial class SafeReportViewModel : ViewModelBase
         finally { IsBusy = false; }
     }
 
-    // ════════════════════════════════════════════════════════════
-    //  طباعة حركة واحدة بعينها
-    // ════════════════════════════════════════════════════════════
     [RelayCommand]
     private async Task PrintEntryAsync(SafeEntryRow entry)
     {
@@ -242,11 +233,22 @@ public partial class SafeReportViewModel : ViewModelBase
         catch (Exception ex) { ShowError($"خطأ في الطباعة:\n{ex.Message}"); }
         finally { IsBusy = false; }
     }
+
+    [RelayCommand]
+    private async Task EditInvoiceEntryAsync(SafeEntryRow entry)
+    {
+        if (entry is null) return;
+        if (entry.RefType != "Invoice")
+        {
+            ShowError("التعديل متاح للفواتير فقط.\nسندات القبض والصرف لها شاشات تعديل منفصلة.");
+            return;
+        }
+
+        var saved = Views.EditInvoiceWindow.ShowEdit(entry.RefId, System.Windows.Application.Current.MainWindow);
+        if (saved) await LoadStatementAsync();
+    }
 }
 
-// ════════════════════════════════════════════════════════════
-//  صف كشف الحساب
-// ════════════════════════════════════════════════════════════
 public class SafeEntryRow
 {
     public DateTime Date { get; set; }

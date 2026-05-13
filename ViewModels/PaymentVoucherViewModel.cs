@@ -77,7 +77,7 @@ public partial class PaymentVoucherViewModel : ViewModelBase
             await db.SaveChangesAsync();
 
             // قيد المحاسبة: مصاريف مدين — خزينة دائن
-            JournalService.PostPayment(db, voucher);
+            JournalService.PostPayment(db, voucher, SelectedSafe!);
             await db.SaveChangesAsync();
 
             await tx.CommitAsync();

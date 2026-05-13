@@ -258,7 +258,7 @@ public partial class InvoiceListViewModel : ViewModelBase
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private int _resultCount;
 
-    partial void OnSearchTextChanged(string _) => FilterInvoices();
+    partial void OnSearchTextChanged(string value) => FilterInvoices();
 
     private void FilterInvoices()
     {
@@ -431,6 +431,28 @@ public partial class InvoiceListViewModel : ViewModelBase
             ShowError($"حدث خطأ أثناء الإلغاء:\n{msg}");
         }
         finally { IsBusy = false; }
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // أضِف هذا الـ method داخل InvoiceListViewModel
+    // بعد CancelInvoiceAsync مباشرةً
+    // ════════════════════════════════════════════════════════════
+
+    [RelayCommand]
+    private async Task EditInvoiceAsync(Invoice invoice)
+    {
+        if (invoice.IsCancelled)
+        {
+            ShowError($"الفاتورة {invoice.InvoiceNumber} ملغاة ولا يمكن تعديلها.");
+            return;
+        }
+
+        var saved = Views.EditInvoiceWindow.ShowEdit(
+            invoice.Id,
+            System.Windows.Application.Current.MainWindow);
+
+        if (saved)
+            await LoadAsync();   // تحديث القائمة بعد التعديل
     }
 }
 
@@ -771,7 +793,9 @@ public partial class DashboardViewModel : ViewModelBase
             // تصنيف الفواتير: نقدي/جزئي (محصّل) vs آجل (لم يُحصَّل)
             TodayCashInvoices = await db.Invoices.CountAsync(i =>
                 i.Date.Date == today && !i.IsCancelled &&
-                (i.PaymentType == PaymentType.Cash || i.PaymentType == PaymentType.Partial));
+                (i.PaymentType == PaymentType.Cash
+                 || i.PaymentType == PaymentType.Partial
+                 || i.PaymentType == PaymentType.Electronic));
 
             TodayCreditInvoices = await db.Invoices.CountAsync(i =>
                 i.Date.Date == today && !i.IsCancelled &&

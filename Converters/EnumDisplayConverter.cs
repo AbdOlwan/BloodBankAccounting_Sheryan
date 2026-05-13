@@ -20,6 +20,10 @@ public class EnumDisplayConverter : IValueConverter
             PaymentType.Cash => "نقدي",
             PaymentType.Credit => "آجل",
             PaymentType.Partial => "جزئي",
+            PaymentType.Electronic => "إلكتروني",
+            ElectronicPaymentMethod.BankTransfer => "تحويل بنكي",
+            ElectronicPaymentMethod.InstaPay => "إنستا باي",
+            ElectronicPaymentMethod.EWallet => "محفظة إلكترونية",
 
             // SafeType
             SafeType.Cash => "خزينة نقدية",

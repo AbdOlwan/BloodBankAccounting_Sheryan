@@ -225,28 +225,51 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="إجراء" Width="120">
+                    <!--
+════════════════════════════════════════════════════════════
+استبدل عمود "إجراء" الموجود في InvoiceListView.xaml
+بهذا العمود الذي يحتوي على زر "تعديل" إضافةً لزري الطباعة والإلغاء
+════════════════════════════════════════════════════════════
+-->
+                    <DataGridTemplateColumn Header="إجراء" Width="180">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+
+                                    <!-- 🖨 طباعة -->
                                     <Button Content="🖨 طباعة"
-                                            Background="Transparent" BorderThickness="0"
-                                            Foreground="#1A2744" FontSize="12" Cursor="Hand"
-                                            Command="{Binding DataContext.PrintInvoiceCommand,
-                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            Margin="0,0,6,0"/>
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="#1A2744" FontSize="12" Cursor="Hand"
+                        Command="{Binding DataContext.PrintInvoiceCommand,
+                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}"
+                        Margin="0,0,6,0"/>
+
+                                    <!-- ✏️ تعديل — يُعطَّل على الملغيات -->
+                                    <Button Content="✏️ تعديل"
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="#1A5276" FontSize="12" Cursor="Hand"
+                        Command="{Binding DataContext.EditInvoiceCommand,
+                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}"
+                        IsEnabled="{Binding IsCancelled,
+                                    Converter={StaticResource InverseBoolConverter}}"
+                        Margin="0,0,6,0"/>
+
+                                    <!-- ✗ إلغاء -->
                                     <Button Content="إلغاء"
-                                            Background="Transparent" BorderThickness="0"
-                                            Foreground="#C0392B" FontSize="12" Cursor="Hand"
-                                            Command="{Binding DataContext.CancelInvoiceCommand,
-                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            IsEnabled="{Binding IsCancelled, Converter={StaticResource InverseBoolConverter}}"/>
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="#C0392B" FontSize="12" Cursor="Hand"
+                        Command="{Binding DataContext.CancelInvoiceCommand,
+                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding}"
+                        IsEnabled="{Binding IsCancelled,
+                                    Converter={StaticResource InverseBoolConverter}}"/>
                                 </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
+
                 </DataGrid.Columns>
             </DataGrid>
         </Border>

@@ -11,12 +11,14 @@
     <UserControl.Resources>
         <conv:BoolToVisibilityConverter        x:Key="BoolToVis"/>
         <conv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"/>
+        <conv:InverseBoolConverter             x:Key="InverseBoolConverter"/>
+        <conv:EnumDisplayConverter             x:Key="EnumDisplay"/>
     </UserControl.Resources>
 
     <!-- ════════════════════════════════════════════════════════
          الهيكل الرئيسي: عمودان
          Left (*)  : رأس الفاتورة + جدول الأصناف + الإجماليات + حفظ
-         Right (300): إضافة صنف يدوي + باركود + قائمة الأكياس
+         Right (310): إضافة صنف يدوي + باركود + قائمة الأكياس
     ═══════════════════════════════════════════════════════════ -->
     <Grid Margin="20,16,20,16">
         <Grid.ColumnDefinitions>
@@ -37,7 +39,7 @@
                 <RowDefinition Height="Auto"/>
                 <!-- 2: الإجماليات              -->
                 <RowDefinition Height="Auto"/>
-                <!-- 3: زر الحفظ               -->
+                <!-- 3: أزرار الحفظ والطباعة   -->
             </Grid.RowDefinitions>
 
             <!-- ══════════════════════════════════════════════
@@ -46,8 +48,6 @@
             <Border Grid.Row="0"
                     Background="White" BorderBrush="#E8EBF0" BorderThickness="1"
                     CornerRadius="14" Padding="20,16" Margin="0,0,0,12">
-
-                <!-- شريط أعلوي ملوّن يدل على أنها فاتورة جديدة -->
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="12" ShadowDepth="2"
                                       Color="#1A2744" Opacity="0.06"/>
@@ -56,14 +56,16 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
-                        <!-- الصف A: رقم + تاريخ + دفع      -->
+                        <!-- الصف A: رقم + تاريخ + دفع        -->
                         <RowDefinition Height="12"/>
                         <RowDefinition Height="Auto"/>
-                        <!-- الصف B: العميل (محور التصميم) -->
+                        <!-- الصف B: العميل                    -->
                         <RowDefinition Height="Auto"/>
-                        <!-- الصف C: نموذج عميل جديد        -->
+                        <!-- الصف C: نموذج عميل جديد          -->
                         <RowDefinition Height="Auto"/>
-                        <!-- الصف D: الخزينة + جزئي         -->
+                        <!-- الصف D: الخزينة + جزئي            -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- الصف E: تفاصيل الدفع الإلكتروني  -->
                     </Grid.RowDefinitions>
 
                     <!-- ─── A: رقم الفاتورة / التاريخ / نوع الدفع ─── -->
@@ -106,8 +108,7 @@
                                        FontSize="10" Foreground="#8E8E93"
                                        FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <ComboBox ItemsSource="{Binding PaymentTypes}"
-                                      SelectedItem="{Binding PaymentType}"
-                                      Style="{StaticResource FormComboBox}">
+                                      SelectedItem="{Binding PaymentType}">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Converter={StaticResource EnumDisplay}}"/>
@@ -121,7 +122,7 @@
                     <Border Grid.Row="1" Height="1" Background="#F0F2F5"
                             VerticalAlignment="Center" Margin="0,4"/>
 
-                    <!-- ─── B: منطقة العميل (التصميم الجديد) ─── -->
+                    <!-- ─── B: منطقة العميل ─── -->
                     <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -134,8 +135,6 @@
                             <TextBlock Text="العميل *"
                                        FontSize="10" Foreground="#8E8E93"
                                        FontWeight="SemiBold" Margin="0,0,0,4"/>
-
-                            <!-- حاوية ComboBox كـ AutoComplete -->
                             <ComboBox ItemsSource="{Binding Customers}"
                                       SelectedItem="{Binding SelectedCustomer}"
                                       IsEditable="True"
@@ -147,7 +146,7 @@
                                       ToolTip="ابدأ بالكتابة للبحث، أو اختر من القائمة"/>
                         </StackPanel>
 
-                        <!-- بطاقة معلومات العميل المختار (تظهر عند الاختيار) -->
+                        <!-- بطاقة معلومات العميل المختار -->
                         <Border Grid.Column="2"
                                 Background="#F0FFF4" BorderBrush="#27AE60"
                                 BorderThickness="1" CornerRadius="10"
@@ -181,7 +180,7 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- أيقونة "لا يوجد عميل" عند عدم الاختيار -->
+                        <!-- أيقونة "لا يوجد عميل" -->
                         <Border Grid.Column="2"
                                 Background="#F8F9FA" BorderBrush="#DEE2E6"
                                 BorderThickness="1" CornerRadius="10"
@@ -215,7 +214,6 @@
                             BorderBrush="#27AE60" BorderThickness="1"
                             CornerRadius="10" Padding="16,12"
                             Visibility="{Binding IsQuickAddVisible, Converter={StaticResource BoolToVis}}">
-
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -292,8 +290,7 @@
                                     Height="36" Padding="10,0" Cursor="Hand">
                                 <Button.Template>
                                     <ControlTemplate TargetType="Button">
-                                        <Border x:Name="xb" CornerRadius="8"
-                                                Background="#EEEEEE">
+                                        <Border x:Name="xb" CornerRadius="8" Background="#EEEEEE">
                                             <TextBlock Text="✖" Foreground="#555555"
                                                        FontSize="12"
                                                        HorizontalAlignment="Center"
@@ -311,7 +308,7 @@
                         </Grid>
                     </Border>
 
-                    <!-- ─── زر إضافة عميل جديد (يظهر دائماً أسفل حقل العميل) ─── -->
+                    <!-- ─── زر إضافة عميل جديد ─── -->
                     <Border Grid.Row="3"
                             Margin="0,10,0,0"
                             Visibility="{Binding IsQuickAddVisible, Converter={StaticResource InvBoolToVis}}">
@@ -363,9 +360,10 @@
                                            FontSize="10" Foreground="#8E8E93"
                                            FontWeight="SemiBold" Margin="0,0,0,4"/>
                                 <ComboBox ItemsSource="{Binding Safes}"
-                                          SelectedItem="{Binding SelectedSafe}"
-                                          DisplayMemberPath="Name"
-                                          Style="{StaticResource FormComboBox}"/>
+          SelectedItem="{Binding SelectedSafe}"
+          DisplayMemberPath="Name"
+          Style="{StaticResource FormComboBox}"
+          ToolTip="اختر الخزينة المناسبة (نقدية أو إلكترونية)"/>
                             </StackPanel>
 
                             <!-- المدفوع الآن (جزئي فقط) -->
@@ -392,6 +390,97 @@
                                                FontSize="18" FontWeight="Bold" Foreground="#E67E22"/>
                                 </StackPanel>
                             </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- ─── E: تفاصيل الدفع الإلكتروني ─── -->
+                    <Border Grid.Row="5"
+                            Margin="0,12,0,0"
+                            Background="#EBF5FB"
+                            BorderBrush="#2E86C1" BorderThickness="1"
+                            CornerRadius="10" Padding="14,12"
+                            Visibility="{Binding IsElectronicVisible, Converter={StaticResource BoolToVis}}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="10"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- عنوان القسم -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                <TextBlock Text="💳" FontSize="14"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock Text="تفاصيل الدفع الإلكتروني"
+                                           FontSize="12" FontWeight="Bold"
+                                           Foreground="#1A5276" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- الحقول: وسيلة الدفع + المرسل + المستلم + المرجع -->
+                            <Grid Grid.Row="2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="130"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- وسيلة الدفع -->
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="وسيلة الدفع"
+                                               FontSize="10" Foreground="#2E86C1"
+                                               FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <ComboBox ItemsSource="{Binding ElectronicMethods}"
+                                              SelectedItem="{Binding ElectronicMethod}"
+                                              Style="{StaticResource FormComboBox}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Converter={StaticResource EnumDisplay}}"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <!-- اسم / حساب المرسل -->
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock FontSize="10" Foreground="#2E86C1"
+                                               FontWeight="SemiBold" Margin="0,0,0,4">
+                                        <Run Text="اسم / حساب المرسل"/>
+                                        <Run Text=" *" Foreground="#C0392B"/>
+                                    </TextBlock>
+                                    <TextBox Text="{Binding ElectronicFromAccount, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource FormTextBox}"
+                                             FontSize="13"
+                                             ToolTip="اسم الشخص أو رقم الحساب المُرسِل"/>
+                                </StackPanel>
+
+                                <!-- الحساب المستلم -->
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock FontSize="10" Foreground="#2E86C1"
+                                               FontWeight="SemiBold" Margin="0,0,0,4">
+                                        <Run Text="الحساب المستلم"/>
+                                        <Run Text=" *" Foreground="#C0392B"/>
+                                    </TextBlock>
+                                    <TextBox Text="{Binding ElectronicToAccount, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource FormTextBox}"
+                                             FontSize="13"
+                                             ToolTip="رقم الحساب أو المحفظة المستلِمة"/>
+                                </StackPanel>
+
+                                <!-- رقم المرجع (اختياري) -->
+                                <StackPanel Grid.Column="6">
+                                    <TextBlock Text="رقم المرجع (اختياري)"
+                                               FontSize="10" Foreground="#2E86C1"
+                                               FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBox Text="{Binding ElectronicTransactionRef, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource FormTextBox}"
+                                             FontSize="13"
+                                             ToolTip="رقم العملية أو المرجع من تطبيق الدفع"/>
+                                </StackPanel>
+                            </Grid>
                         </Grid>
                     </Border>
 
@@ -501,38 +590,79 @@
             </Border>
 
             <!-- ══════════════════════════════════════════════
-                 Row 3 — زر الحفظ
+                 Row 3 — أزرار الحفظ والطباعة
             ═════════════════════════════════════════════════ -->
-            <Button Grid.Row="3" Height="50" Cursor="Hand"
-                    Command="{Binding SaveCommand}"
-                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="saveBtn" CornerRadius="12" Background="#1A2744">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="14" ShadowDepth="3"
-                                                  Color="#1A2744" Opacity="0.25"/>
-                            </Border.Effect>
-                            <StackPanel Orientation="Horizontal"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="💾" FontSize="18"
-                                           VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                <TextBlock Text="حفظ الفاتورة"
-                                           Foreground="White" FontSize="15"
-                                           FontWeight="Bold" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="saveBtn" Property="Background" Value="#C0392B"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="saveBtn" Property="Background" Value="#CCCCCC"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Button.Template>
-            </Button>
+            <Grid Grid.Row="3" Height="54">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- ── زر حفظ الفاتورة ── -->
+                <Button Grid.Column="0" Cursor="Hand"
+                        Command="{Binding SaveCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="saveBtn" CornerRadius="12" Background="#1A2744">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="12" ShadowDepth="2"
+                                                      Color="#1A2744" Opacity="0.22"/>
+                                </Border.Effect>
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="💾" FontSize="17"
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="حفظ الفاتورة"
+                                               Foreground="White" FontSize="14"
+                                               FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="saveBtn" Property="Background" Value="#2C3E6B"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="saveBtn" Property="Background" Value="#C8C8C8"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- ── زر حفظ وطباعة ── -->
+                <Button Grid.Column="2" Cursor="Hand"
+                        Command="{Binding SaveAndPrintCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="printBtn" CornerRadius="12" Background="#C0392B">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="12" ShadowDepth="2"
+                                                      Color="#C0392B" Opacity="0.22"/>
+                                </Border.Effect>
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="🖨" FontSize="17"
+                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="حفظ وطباعة"
+                                               Foreground="White" FontSize="14"
+                                               FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="printBtn" Property="Background" Value="#922B21"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="printBtn" Property="Background" Value="#C8C8C8"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════
@@ -544,7 +674,7 @@
                 <!-- 0: إضافة صنف يدوي  -->
                 <RowDefinition Height="12"/>
                 <RowDefinition Height="*"/>
-                <!-- 1: باركود + أكياس  -->
+                <!-- 2: باركود + أكياس  -->
             </Grid.RowDefinitions>
 
             <!-- ══════════════════════════════════════════════

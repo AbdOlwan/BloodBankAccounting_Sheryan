@@ -35,7 +35,7 @@ public static class InvoicePrinter
         if (!string.IsNullOrWhiteSpace(org.LogoPath) && File.Exists(org.LogoPath))
             logoBytes = await File.ReadAllBytesAsync(org.LogoPath);
 
-        var path = Path.Combine(Path.GetTempPath(), $"Invoice_{invoice.InvoiceNumber}.pdf");
+        var path = Path.Combine(Path.GetTempPath(), $"Invoice_{invoice.InvoiceNumber}_{DateTime.Now:yyyyMMddHHmmss}.pdf");
 
         var doc = Document.Create(container =>
         {

@@ -1,6 +1,7 @@
 using BloodBankAccounting.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.Reflection.Emit;
 
 namespace BloodBankAccounting.Data;
 
@@ -14,6 +15,9 @@ public class AppDbContext : DbContext
     public DbSet<ReceiptVoucher> ReceiptVouchers { get; set; }
     public DbSet<JournalEntry> JournalEntries { get; set; }
     public DbSet<OrganizationSettings> OrgSettings { get; set; }   // ← جديد
+    public DbSet<InvoiceAuditLog> InvoiceAuditLogs => Set<InvoiceAuditLog>();
+
+    public DbSet<ElectronicPaymentDetail> ElectronicPaymentDetails { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -106,6 +110,41 @@ public class AppDbContext : DbContext
              .OnDelete(DeleteBehavior.Restrict);
         });
 
+        mb.Entity<InvoiceAuditLog>(e =>
+        {
+            e.HasOne(a => a.Invoice)
+             .WithMany()
+             .HasForeignKey(a => a.InvoiceId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.Property(x => x.OldDiscountAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.OldTotalAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.OldPaidAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.NewDiscountAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.NewTotalAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.NewPaidAmount).HasColumnType("decimal(18,2)");
+        });
+
+        mb.Entity<ElectronicPaymentDetail>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.FromAccountName).IsRequired().HasMaxLength(200);
+            e.Property(x => x.ToAccountName).IsRequired().HasMaxLength(200);
+            e.Property(x => x.TransactionReference).HasMaxLength(100);
+            e.Property(x => x.Method).HasConversion<string>();
+
+            e.HasOne(x => x.Invoice)
+             .WithOne(x => x.ElectronicDetail)
+             .HasForeignKey<ElectronicPaymentDetail>(x => x.InvoiceId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.ReceiptVoucher)
+             .WithOne()
+             .HasForeignKey<ElectronicPaymentDetail>(x => x.ReceiptVoucherId)
+             .IsRequired(false).OnDelete(DeleteBehavior.Cascade);
+        });
+
+
         // ─── ReceiptVoucher ───────────────────────────────────
         mb.Entity<ReceiptVoucher>(e =>
         {
@@ -168,8 +207,9 @@ public class AppDbContext : DbContext
 
         // ─── Seed ─────────────────────────────────────────────
         mb.Entity<Safe>().HasData(
-            new Safe { Id = 1, Name = "الخزينة الرئيسية", Type = SafeType.Cash, Balance = 0, IsMain = true }
-        );
+             new Safe { Id = 1, Name = "الخزينة الرئيسية", Type = SafeType.Cash, Balance = 0, IsMain = true },
+             new Safe { Id = 2, Name = "الخزينة الإلكترونية", Type = SafeType.Electronic, Balance = 0, IsMain = false }
+             );
 
         mb.Entity<OrganizationSettings>().HasData(
             new OrganizationSettings

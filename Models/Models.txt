@@ -1,0 +1,360 @@
+This file is a merged representation of a subset of the codebase, containing files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching these patterns are excluded: **/Migrations/**, **/obj/**, **/bin/**, **/Properties/**
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+BloodBag.cs
+Customer.cs
+ElectronicPaymentDetail.cs
+Enums.cs
+Invoice.cs
+InvoiceAuditLog.cs
+InvoiceLine.cs
+JournalEntry.cs
+OrganizationSettings.cs
+ReceiptVoucher.cs
+Safe.cs
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="BloodBag.cs">
+namespace BloodBankAccounting.Models;
+
+public class BloodBag
+{
+    public int    Id         { get; set; }
+    public string BagNumber  { get; set; } = string.Empty;   // رقم الكيس
+    public BloodGroup BloodGroup { get; set; }
+    public decimal CostPrice { get; set; }
+    public decimal SalePrice { get; set; }
+    public DateTime ExpiryDate  { get; set; }
+    public DateTime EntryDate   { get; set; } = DateTime.Now;
+    public BloodBagStatus Status { get; set; } = BloodBagStatus.Available;
+    public string? Notes     { get; set; }
+
+    // Navigation
+    public ICollection<InvoiceLine> InvoiceLines { get; set; } = [];
+}
+</file>
+
+<file path="Customer.cs">
+namespace BloodBankAccounting.Models;
+
+public class Customer
+{
+    public int    Id          { get; set; }
+    public string Name        { get; set; } = string.Empty;
+    public CustomerType Type  { get; set; }
+    public string Phone       { get; set; } = string.Empty;
+    public string? Address    { get; set; }
+    public decimal Balance    { get; set; }          // موجب = مدين لنا
+    public decimal CreditLimit { get; set; }
+    public bool   IsActive    { get; set; } = true;
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+    // Navigation
+    public ICollection<Invoice>        Invoices        { get; set; } = [];
+    public ICollection<ReceiptVoucher> ReceiptVouchers { get; set; } = [];
+}
+</file>
+
+<file path="ElectronicPaymentDetail.cs">
+namespace BloodBankAccounting.Models;
+
+public class ElectronicPaymentDetail
+{
+    public int Id { get; set; }
+    public ElectronicPaymentMethod Method { get; set; }
+    public string FromAccountName { get; set; } = string.Empty;
+    public string ToAccountName { get; set; } = string.Empty;
+    public string? TransactionReference { get; set; }
+    public DateTime TransactionDateTime { get; set; } = DateTime.Now;
+
+    public int? InvoiceId { get; set; }
+    public Invoice? Invoice { get; set; }
+    public int? ReceiptVoucherId { get; set; }
+    public ReceiptVoucher? ReceiptVoucher { get; set; }
+}
+</file>
+
+<file path="Enums.cs">
+namespace BloodBankAccounting.Models;
+
+public enum CustomerType
+{
+    Hospital = 1,
+    Person   = 2
+}
+
+public enum BloodGroup
+{
+    APositive  = 1,
+    ANegative  = 2,
+    BPositive  = 3,
+    BNegative  = 4,
+    ABPositive = 5,
+    ABNegative = 6,
+    OPositive  = 7,
+    ONegative  = 8
+}
+
+public enum PaymentType { Cash = 1, Credit = 2, Partial = 3, Electronic = 4 }
+
+public enum SafeType
+{
+    Cash = 1,
+    Bank = 2,
+    Electronic = 3   // ? ????: ??????? ???????????
+}
+
+public enum BloodBagStatus
+{
+    Available = 1,
+    Sold      = 2,
+    Expired   = 3,
+    Damaged   = 4,
+    Reserved  = 5
+}
+
+public enum VoucherType
+{
+    Receipt = 1,
+    Payment = 2
+}
+
+public enum ElectronicPaymentMethod
+{
+    BankTransfer = 1,  // ????? ????
+    InstaPay = 2,  // ????? ???
+    EWallet = 3   // ????? ?????????
+}
+</file>
+
+<file path="Invoice.cs">
+namespace BloodBankAccounting.Models;
+
+
+public class Invoice
+{
+    public int Id { get; set; }
+    public string InvoiceNumber { get; set; } = string.Empty;
+    public DateTime Date { get; set; } = DateTime.Now;
+    public PaymentType PaymentType { get; set; }
+
+    public int CustomerId { get; set; }
+    public Customer Customer { get; set; } = null!;
+
+    public int? SafeId { get; set; }
+    public Safe? Safe { get; set; }
+
+    public decimal SubTotal { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal PaidAmount { get; set; }
+
+    // ← جديد: المتبقي = الإجمالي - المدفوع
+    public decimal RemainingAmount => TotalAmount - PaidAmount;
+
+    public bool IsCancelled { get; set; }
+    public string? CancelReason { get; set; }
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+    public ICollection<InvoiceLine> Lines { get; set; } = [];
+    public ICollection<ReceiptVoucher> ReceiptVouchers { get; set; } = [];
+    public ICollection<JournalEntry> JournalEntries { get; set; } = [];
+    public ElectronicPaymentDetail? ElectronicDetail { get; set; }
+}
+</file>
+
+<file path="InvoiceAuditLog.cs">
+namespace BloodBankAccounting.Models;
+
+/// <summary>
+/// سجل تدقيق تعديلات الفواتير — يُحفظ سجل دائم بكل تعديل:
+/// متى تم، ما كانت القيم القديمة، وما أصبحت القيم الجديدة.
+/// أضِف إلى AppDbContext: public DbSet&lt;InvoiceAuditLog&gt; InvoiceAuditLogs =&gt; Set&lt;InvoiceAuditLog&gt;();
+/// ثم أضِف Migration جديدة.
+/// </summary>
+public class InvoiceAuditLog
+{
+    public int Id { get; set; }
+
+    public int InvoiceId { get; set; }
+    public Invoice Invoice { get; set; } = null!;
+
+    /// <summary>وقت التعديل بالضبط</summary>
+    public DateTime EditedAt { get; set; } = DateTime.Now;
+
+    // ── القيم قبل التعديل ──────────────────────────────────────────
+    public DateTime OldDate { get; set; }
+    public decimal OldDiscountAmount { get; set; }
+    public decimal OldTotalAmount { get; set; }
+    public decimal OldPaidAmount { get; set; }
+    public string OldNotes { get; set; } = string.Empty;
+
+    // ── القيم بعد التعديل ──────────────────────────────────────────
+    public DateTime NewDate { get; set; }
+    public decimal NewDiscountAmount { get; set; }
+    public decimal NewTotalAmount { get; set; }
+    public decimal NewPaidAmount { get; set; }
+    public string NewNotes { get; set; } = string.Empty;
+
+    /// <summary>ملخص نصي للأثر المالي (يُعرض في التقارير المستقبلية)</summary>
+    public string FinancialImpactSummary { get; set; } = string.Empty;
+}
+</file>
+
+<file path="InvoiceLine.cs">
+namespace BloodBankAccounting.Models;
+
+public class InvoiceLine
+{
+    public int Id        { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+
+    public int InvoiceId { get; set; }
+    public Invoice Invoice { get; set; } = null!;
+
+    public int? BloodBagId { get; set; }
+    public BloodBag? BloodBag { get; set; }
+
+    public decimal UnitPrice { get; set; }
+    public int Quantity      { get; set; } = 1;
+    public decimal Total     { get; set; }
+}
+</file>
+
+<file path="JournalEntry.cs">
+namespace BloodBankAccounting.Models;
+
+/// <summary>
+/// قيد يومية — كل سطر = حساب واحد إما مدين أو دائن
+/// الأزواج مترابطة عبر RefType + RefId
+/// </summary>
+public class JournalEntry
+{
+    public int    Id          { get; set; }
+    public DateTime Date      { get; set; } = DateTime.Now;
+    public string AccountCode { get; set; } = string.Empty;
+    public string AccountName { get; set; } = string.Empty;
+    public decimal DebitAmount  { get; set; }
+    public decimal CreditAmount { get; set; }
+
+    /// <summary>Invoice | Receipt | Payment</summary>
+    public string RefType { get; set; } = string.Empty;
+    public int    RefId   { get; set; }
+
+    public int? InvoiceId { get; set; }
+    public Invoice? Invoice { get; set; }
+
+    public int? ReceiptVoucherId { get; set; }
+    public ReceiptVoucher? ReceiptVoucher { get; set; }
+
+    public string? Notes { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+}
+</file>
+
+<file path="OrganizationSettings.cs">
+namespace BloodBankAccounting.Models;
+
+public class OrganizationSettings
+{
+    public int Id { get; set; } = 15;
+    public string BankName { get; set; } = "بنك الدم";
+    public string SubTitle { get; set; } = "إدارة المحاسبة والمستودعات";
+    public string Address { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string? LogoPath { get; set; }           // مسار ملف الشعار
+    public string OwnerPinHash { get; set; } = string.Empty; // SHA-256
+}
+</file>
+
+<file path="ReceiptVoucher.cs">
+namespace BloodBankAccounting.Models;
+
+public class ReceiptVoucher
+{
+    public int    Id            { get; set; }
+    public string PayeeName { get; set; } = string.Empty;
+
+    public string VoucherNumber { get; set; } = string.Empty;
+    public VoucherType Type     { get; set; } = VoucherType.Receipt;
+    public DateTime Date        { get; set; } = DateTime.Now;
+
+    public int SafeId   { get; set; }
+    public Safe Safe    { get; set; } = null!;
+
+    public int? CustomerId    { get; set; }
+    public Customer? Customer { get; set; }
+
+    public int? RelatedInvoiceId { get; set; }
+    public Invoice? RelatedInvoice { get; set; }
+
+    public decimal Amount { get; set; }
+    public string? Notes  { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+    public ICollection<JournalEntry> JournalEntries { get; set; } = [];
+}
+</file>
+
+<file path="Safe.cs">
+namespace BloodBankAccounting.Models;
+
+public class Safe
+{
+    public int      Id      { get; set; }
+    public string   Name    { get; set; } = string.Empty;
+    public SafeType Type    { get; set; }
+    public decimal  Balance { get; set; }
+    public bool     IsMain  { get; set; }   // الخزينة الرئيسية
+
+    // Navigation
+    public ICollection<ReceiptVoucher> ReceiptVouchers { get; set; } = [];
+    public ICollection<Invoice>        Invoices        { get; set; } = [];
+}
+</file>
+
+</files>

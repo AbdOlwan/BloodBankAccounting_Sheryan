@@ -150,7 +150,7 @@ public partial class ReceiptVoucherViewModel : ViewModelBase
             await db.SaveChangesAsync();
 
             voucher.Customer = customer;
-            JournalService.PostReceipt(db, voucher);
+            JournalService.PostReceipt(db, voucher, SelectedSafe!);
             await db.SaveChangesAsync();
 
             await tx.CommitAsync();

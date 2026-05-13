@@ -63,7 +63,7 @@ namespace BloodBankAccounting.Migrations
                     b.HasIndex("BagNumber")
                         .IsUnique();
 
-                    b.ToTable("BloodBags", (string)null);
+                    b.ToTable("BloodBags");
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.Customer", b =>
@@ -108,7 +108,55 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasIndex("Name");
 
-                    b.ToTable("Customers", (string)null);
+                    b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("BloodBankAccounting.Models.ElectronicPaymentDetail", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FromAccountName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int?>("InvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ReceiptVoucherId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ToAccountName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("TransactionDateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TransactionReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId")
+                        .IsUnique()
+                        .HasFilter("[InvoiceId] IS NOT NULL");
+
+                    b.HasIndex("ReceiptVoucherId")
+                        .IsUnique()
+                        .HasFilter("[ReceiptVoucherId] IS NOT NULL");
+
+                    b.ToTable("ElectronicPaymentDetails");
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.Invoice", b =>
@@ -170,7 +218,64 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasIndex("SafeId");
 
-                    b.ToTable("Invoices", (string)null);
+                    b.ToTable("Invoices");
+                });
+
+            modelBuilder.Entity("BloodBankAccounting.Models.InvoiceAuditLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("EditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FinancialImpactSummary")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("InvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("NewDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("NewDiscountAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("NewNotes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("NewPaidAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("NewTotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("OldDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("OldDiscountAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("OldNotes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("OldPaidAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("OldTotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.ToTable("InvoiceAuditLogs");
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.InvoiceLine", b =>
@@ -207,7 +312,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasIndex("InvoiceId");
 
-                    b.ToTable("InvoiceLines", (string)null);
+                    b.ToTable("InvoiceLines");
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.JournalEntry", b =>
@@ -265,7 +370,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasIndex("RefType", "RefId");
 
-                    b.ToTable("JournalEntries", (string)null);
+                    b.ToTable("JournalEntries");
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.OrganizationSettings", b =>
@@ -307,7 +412,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("OrgSettings", (string)null);
+                    b.ToTable("OrgSettings");
 
                     b.HasData(
                         new
@@ -375,7 +480,7 @@ namespace BloodBankAccounting.Migrations
                     b.HasIndex("VoucherNumber")
                         .IsUnique();
 
-                    b.ToTable("ReceiptVouchers", (string)null);
+                    b.ToTable("ReceiptVouchers");
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.Safe", b =>
@@ -403,7 +508,7 @@ namespace BloodBankAccounting.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Safes", (string)null);
+                    b.ToTable("Safes");
 
                     b.HasData(
                         new
@@ -413,7 +518,32 @@ namespace BloodBankAccounting.Migrations
                             IsMain = true,
                             Name = "الخزينة الرئيسية",
                             Type = "Cash"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Balance = 0m,
+                            IsMain = false,
+                            Name = "الخزينة الإلكترونية",
+                            Type = "Electronic"
                         });
+                });
+
+            modelBuilder.Entity("BloodBankAccounting.Models.ElectronicPaymentDetail", b =>
+                {
+                    b.HasOne("BloodBankAccounting.Models.Invoice", "Invoice")
+                        .WithOne("ElectronicDetail")
+                        .HasForeignKey("BloodBankAccounting.Models.ElectronicPaymentDetail", "InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("BloodBankAccounting.Models.ReceiptVoucher", "ReceiptVoucher")
+                        .WithOne()
+                        .HasForeignKey("BloodBankAccounting.Models.ElectronicPaymentDetail", "ReceiptVoucherId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("ReceiptVoucher");
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.Invoice", b =>
@@ -432,6 +562,17 @@ namespace BloodBankAccounting.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("Safe");
+                });
+
+            modelBuilder.Entity("BloodBankAccounting.Models.InvoiceAuditLog", b =>
+                {
+                    b.HasOne("BloodBankAccounting.Models.Invoice", "Invoice")
+                        .WithMany()
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Invoice");
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.InvoiceLine", b =>
@@ -508,6 +649,8 @@ namespace BloodBankAccounting.Migrations
 
             modelBuilder.Entity("BloodBankAccounting.Models.Invoice", b =>
                 {
+                    b.Navigation("ElectronicDetail");
+
                     b.Navigation("JournalEntries");
 
                     b.Navigation("Lines");

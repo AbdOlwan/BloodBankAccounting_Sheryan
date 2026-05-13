@@ -1,6 +1,7 @@
 using BloodBankAccounting.Data;
 using BloodBankAccounting.Helpers;
 using BloodBankAccounting.Models;
+using BloodBankAccounting.Printing;
 using BloodBankAccounting.ViewModels.Base;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,8 +19,17 @@ public partial class InvoiceViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSafeVisible))]
     [NotifyPropertyChangedFor(nameof(IsPartialVisible))]
+    [NotifyPropertyChangedFor(nameof(IsElectronicVisible))]
     [NotifyPropertyChangedFor(nameof(RemainingAfterInitial))]
     private PaymentType _paymentType = PaymentType.Cash;
+
+    [ObservableProperty] private ElectronicPaymentMethod _electronicMethod = ElectronicPaymentMethod.InstaPay;
+    [ObservableProperty] private string _electronicFromAccount = string.Empty;
+    [ObservableProperty] private string _electronicToAccount = string.Empty;
+    [ObservableProperty] private string? _electronicTransactionRef;
+
+    public IEnumerable<ElectronicPaymentMethod> ElectronicMethods { get; }
+        = Enum.GetValues<ElectronicPaymentMethod>();
 
     [ObservableProperty] private Customer? _selectedCustomer;
     [ObservableProperty] private Safe? _selectedSafe;
@@ -51,7 +61,7 @@ public partial class InvoiceViewModel : ViewModelBase
 
     public decimal NewLineTotal => NewLineQty * NewLineUnitPrice;
 
-    // ─── Barcode Scan (secondary) ─────────────────────────────
+    // ─── Barcode Scan ─────────────────────────────────────────
     [ObservableProperty] private string _scanBagNumber = string.Empty;
 
     // ─── Lines ────────────────────────────────────────────────
@@ -61,9 +71,12 @@ public partial class InvoiceViewModel : ViewModelBase
     [ObservableProperty] private decimal _discountAmount;
     [ObservableProperty] private decimal _subTotal;
     [ObservableProperty] private decimal _totalAmount;
-
-    public bool IsSafeVisible => PaymentType == PaymentType.Cash || PaymentType == PaymentType.Partial;
+    public ObservableCollection<Safe> FilteredSafes { get; } = [];
+    public bool IsSafeVisible => PaymentType is PaymentType.Cash
+                                       or PaymentType.Partial
+                                       or PaymentType.Electronic;
     public bool IsPartialVisible => PaymentType == PaymentType.Partial;
+    public bool IsElectronicVisible => PaymentType == PaymentType.Electronic;
     public decimal RemainingAfterInitial => Math.Max(0, TotalAmount - InitialPayment);
 
     // ─── Lookup lists ─────────────────────────────────────────
@@ -73,7 +86,6 @@ public partial class InvoiceViewModel : ViewModelBase
 
     public IEnumerable<PaymentType> PaymentTypes { get; } = Enum.GetValues<PaymentType>();
 
-    /// <summary>أنواع منتجات الدم الشائعة — قابلة للتحرير الحر في ComboBox</summary>
     public IReadOnlyList<string> BloodProductTypes { get; } =
     [
         "دم كامل",
@@ -110,9 +122,34 @@ public partial class InvoiceViewModel : ViewModelBase
             AvailableBags.Clear(); bags.ForEach(AvailableBags.Add);
 
             InvoiceNumber = await NumberGenerator.NextInvoiceNumberAsync(db);
-            SelectedSafe = safes.FirstOrDefault(s => s.IsMain);
+
+            // تحديد الخزينة الافتراضية حسب نوع الدفع
+            if (PaymentType == PaymentType.Electronic)
+                SelectedSafe = safes.FirstOrDefault(s => s.Type == SafeType.Electronic);
+            else
+                SelectedSafe = safes.FirstOrDefault(s => s.IsMain);
         }
         finally { IsBusy = false; }
+    }
+
+    // ─── Auto-select safe when payment type changes ─────────────
+    partial void OnPaymentTypeChanged(PaymentType value)
+    {
+        OnPropertyChanged(nameof(IsSafeVisible));
+        OnPropertyChanged(nameof(IsPartialVisible));
+        OnPropertyChanged(nameof(IsElectronicVisible));
+        OnPropertyChanged(nameof(RemainingAfterInitial));
+
+        if (value == PaymentType.Electronic)
+            SelectedSafe = Safes.FirstOrDefault(s => s.Type == SafeType.Electronic) ?? SelectedSafe;
+        else if (value == PaymentType.Cash || value == PaymentType.Partial)
+            SelectedSafe = Safes.FirstOrDefault(s => s.IsMain) ?? SelectedSafe;
+
+        FilteredSafes.Clear();
+        var filtered = PaymentType == PaymentType.Electronic
+            ? Safes.Where(s => s.Type == SafeType.Electronic)
+            : Safes;
+        foreach (var s in filtered) FilteredSafes.Add(s);
     }
 
     // ─── Quick Add Customer ───────────────────────────────────
@@ -190,7 +227,6 @@ public partial class InvoiceViewModel : ViewModelBase
         Lines.Add(line);
         RecalculateTotals();
 
-        // إعادة تعيين حقول الإدخال
         NewLineName = string.Empty;
         NewLineQty = 1;
         NewLineUnitPrice = 0;
@@ -275,6 +311,7 @@ public partial class InvoiceViewModel : ViewModelBase
                 PaidAmount = PaymentType switch
                 {
                     PaymentType.Cash => TotalAmount,
+                    PaymentType.Electronic => TotalAmount,
                     PaymentType.Partial => InitialPayment,
                     _ => 0
                 }
@@ -288,14 +325,13 @@ public partial class InvoiceViewModel : ViewModelBase
                 db.InvoiceLines.Add(new InvoiceLine
                 {
                     InvoiceId = invoice.Id,
-                    BloodBagId = line.BloodBagId,            // null للأصناف اليدوية
+                    BloodBagId = line.BloodBagId,
                     ProductName = line.ProductName,
                     UnitPrice = line.UnitPrice,
                     Quantity = line.Quantity,
                     Total = line.Total
                 });
 
-                // تحديث حالة الكيس فقط إذا كان مرتبطاً
                 if (line.BloodBagId.HasValue)
                 {
                     var bag = await db.BloodBags.FindAsync(line.BloodBagId.Value);
@@ -321,6 +357,20 @@ public partial class InvoiceViewModel : ViewModelBase
                     var safePartial = await db.Safes.FindAsync(SelectedSafe!.Id);
                     safePartial!.Balance += InitialPayment;
                     break;
+
+                case PaymentType.Electronic:
+                    var safeElec = await db.Safes.FindAsync(SelectedSafe!.Id);
+                    safeElec!.Balance += TotalAmount;
+                    db.ElectronicPaymentDetails.Add(new ElectronicPaymentDetail
+                    {
+                        InvoiceId = invoice.Id,
+                        Method = ElectronicMethod,
+                        FromAccountName = ElectronicFromAccount.Trim(),
+                        ToAccountName = ElectronicToAccount.Trim(),
+                        TransactionReference = ElectronicTransactionRef?.Trim(),
+                        TransactionDateTime = DateTime.Now
+                    });
+                    break;
             }
 
             await db.SaveChangesAsync();
@@ -328,10 +378,17 @@ public partial class InvoiceViewModel : ViewModelBase
             invoice.Customer = customer!;
 
             if (PaymentType == PaymentType.Partial)
-                JournalService.PostPartialInvoice(db, invoice, InitialPayment, AccountCodes.Cash);
+            {
+                JournalService.PostPartialInvoice(db, invoice, InitialPayment, SelectedSafe!);
+            }
+            else if (PaymentType == PaymentType.Electronic)
+            {
+                JournalService.PostInvoice(db, invoice, SelectedSafe!);
+            }
             else
-                JournalService.PostInvoice(db, invoice,
-                    PaymentType == PaymentType.Cash ? AccountCodes.Cash : AccountCodes.AccountsRec);
+            {
+                JournalService.PostInvoice(db, invoice, SelectedSafe!);
+            }
 
             await db.SaveChangesAsync();
             await tx.CommitAsync();
@@ -341,12 +398,37 @@ public partial class InvoiceViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            // ابحث عن السبب العميق للخطأ
             var message = ex.InnerException?.InnerException?.Message
                           ?? ex.InnerException?.Message
                           ?? ex.Message;
-
             ShowError($"حدث خطأ أثناء الحفظ:\n{message}");
+        }
+        finally { IsBusy = false; }
+    }
+
+    // ─── Save & Print ──────────────────────────────────────────
+    [RelayCommand]
+    private async Task SaveAndPrintAsync()
+    {
+        if (!Validate()) return;
+
+        IsBusy = true;
+        try
+        {
+            var invoiceNumber = InvoiceNumber;
+            await SaveAsync();
+
+            if (!string.IsNullOrEmpty(invoiceNumber))
+            {
+                using var db = new AppDbContext();
+                var saved = await db.Invoices.FirstOrDefaultAsync(i => i.InvoiceNumber == invoiceNumber);
+                if (saved is not null)
+                    await InvoicePrinter.PrintAsync(saved.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"خطأ في الطباعة:\n{ex.Message}");
         }
         finally { IsBusy = false; }
     }
@@ -356,7 +438,6 @@ public partial class InvoiceViewModel : ViewModelBase
         if (SelectedCustomer is null) { ShowError("اختر العميل"); return false; }
         if (!Lines.Any()) { ShowError("أضف صنفاً واحداً على الأقل"); return false; }
 
-        // ─── التحقق من الخصم ──────────────────────────────────
         if (DiscountAmount < 0)
         {
             ShowError("الخصم لا يمكن أن يكون قيمة سالبة"); return false;
@@ -375,6 +456,14 @@ public partial class InvoiceViewModel : ViewModelBase
             if (InitialPayment >= TotalAmount)
             { ShowError("المبلغ المدفوع يجب أن يكون أقل من الإجمالي\nللدفع الكامل اختر «نقدي»"); return false; }
         }
+        if (PaymentType == PaymentType.Electronic)
+        {
+            if (SelectedSafe is null) { ShowError("اختر الخزينة الإلكترونية"); return false; }
+            if (SelectedSafe.Type != SafeType.Electronic)
+            { ShowError("يجب اختيار خزينة إلكترونية للدفع الإلكتروني"); return false; }
+            if (string.IsNullOrWhiteSpace(ElectronicFromAccount)) { ShowError("أدخل حساب/اسم المرسل"); return false; }
+            if (string.IsNullOrWhiteSpace(ElectronicToAccount)) { ShowError("أدخل الحساب المستلم"); return false; }
+        }
         return true;
     }
 
@@ -389,14 +478,16 @@ public partial class InvoiceViewModel : ViewModelBase
         NewLineName = string.Empty;
         NewLineQty = 1;
         NewLineUnitPrice = 0;
+        ElectronicFromAccount = string.Empty;
+        ElectronicToAccount = string.Empty;
+        ElectronicTransactionRef = null;
+        ElectronicMethod = ElectronicPaymentMethod.InstaPay;
         await LoadAsync();
     }
 }
 
-// ─── Line item DTO ────────────────────────────────────────────
 public partial class InvoiceLineItem : ObservableObject
 {
-    /// <summary>null → صنف يدوي</summary>
     public int? BloodBagId { get; set; }
     public bool IsManual { get; set; }
     public string ProductName { get; set; } = string.Empty;
@@ -412,7 +503,6 @@ public partial class InvoiceLineItem : ObservableObject
     public decimal Total => UnitPrice * Quantity;
 }
 
-// ─── Extension ────────────────────────────────────────────────
 public static class BloodGroupExtensions
 {
     public static string ToArabic(this BloodGroup g) => g switch

@@ -18,17 +18,13 @@ public enum BloodGroup
     ONegative  = 8
 }
 
-public enum PaymentType
-{
-    Cash = 1,
-    Credit = 2,
-    Partial = 3   
-}
+public enum PaymentType { Cash = 1, Credit = 2, Partial = 3, Electronic = 4 }
 
 public enum SafeType
 {
     Cash = 1,
-    Bank = 2
+    Bank = 2,
+    Electronic = 3   // ? ????: ??????? ???????????
 }
 
 public enum BloodBagStatus
@@ -44,4 +40,11 @@ public enum VoucherType
 {
     Receipt = 1,
     Payment = 2
+}
+
+public enum ElectronicPaymentMethod
+{
+    BankTransfer = 1,  // ????? ????
+    InstaPay = 2,  // ????? ???
+    EWallet = 3   // ????? ?????????
 }
