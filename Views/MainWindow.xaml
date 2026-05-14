@@ -103,7 +103,11 @@
                                 Command="{Binding NavigateToBloodInventoryCommand}"
                                 Style="{StaticResource NavButton}"
                                 Content="🩸  مخزون الدم"/>
-
+                        <Button Tag="ProductCatalog"
+                                Command="{Binding NavigateToProductCatalogCommand}"
+                                Style="{StaticResource NavButton}"
+                                Content="📋  إدارة الأصناف"/>
+                        
                         <TextBlock Text="التقارير" Foreground="#666666"
                                    FontSize="9" FontWeight="Bold"
                                    Margin="8,14,8,6"/>

@@ -51,6 +51,11 @@
                 <views:SafeReportView/>
             </DataTemplate>
 
+        
+            <DataTemplate DataType="{x:Type vm:ProductCatalogViewModel}">
+                <views:ProductCatalogView/>
+            </DataTemplate>
+
             <!-- ─── جديد ─── -->
             <DataTemplate DataType="{x:Type vm:OrgSettingsViewModel}">
                 <views:OrganizationSettingsView/>

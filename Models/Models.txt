@@ -42,6 +42,8 @@ The content is organized as follows:
 
 <directory_structure>
 BloodBag.cs
+BloodProduct.cs
+BloodStock.cs
 Customer.cs
 ElectronicPaymentDetail.cs
 Enums.cs
@@ -50,6 +52,7 @@ InvoiceAuditLog.cs
 InvoiceLine.cs
 JournalEntry.cs
 OrganizationSettings.cs
+ProductCatalogItem.cs
 ReceiptVoucher.cs
 Safe.cs
 </directory_structure>
@@ -74,6 +77,77 @@ public class BloodBag
 
     // Navigation
     public ICollection<InvoiceLine> InvoiceLines { get; set; } = [];
+}
+</file>
+
+<file path="BloodProduct.cs">
+namespace BloodBankAccounting.Models;
+
+/// <summary>
+/// صنف منتج الدم — مثل "كرات دم مكدسة"، "وحدة صفائح"
+/// هو المصدر الوحيد للأصناف في كل أنحاء التطبيق:
+///   - شاشة "إدارة الأصناف" تدير هذا الجدول
+///   - شاشة "مخزون بنك الدم" تقرأ منه مباشرةً
+/// </summary>
+public class BloodProduct
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>كود ISBT — يُربط بقارئ الباركود مستقبلًا</summary>
+    public string? IsbtCode { get; set; }
+
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; } = true;
+
+    // ─── حقول الكتالوج (تُدار من شاشة "إدارة الأصناف") ─────────────
+    /// <summary>سعر البيع الافتراضي — يُستخدم مرجعًا عند إنشاء الفواتير</summary>
+    public decimal DefaultSalePrice { get; set; }
+
+    /// <summary>الحد الأدنى للمخزون الذي يُفعِّل تنبيه إعادة الطلب — اختياري</summary>
+    public int? ReorderLevel { get; set; }
+
+    // Navigation
+    public ICollection<BloodStock> StockEntries { get; set; } = [];
+}
+</file>
+
+<file path="BloodStock.cs">
+namespace BloodBankAccounting.Models;
+
+/// <summary>
+/// رصيد المخزون المجمع لكل (صنف × فصيلة).
+/// 
+/// مبدأ التوحيد:
+///   سواء أُدخلت الكمية يدويًا أو مستقبلًا عبر الباركود،
+///   يتم تحديث نفس السجل دون إنشاء سجل جديد.
+/// 
+/// BloodGroup = null → بدون فصيلة (مثل بلازما، صفائح)
+/// </summary>
+public class BloodStock
+{
+    public int Id { get; set; }
+
+    public int ProductId { get; set; }
+    public BloodProduct Product { get; set; } = null!;
+
+    /// <summary>null = بدون فصيلة</summary>
+    public BloodGroup? BloodGroup { get; set; }
+
+    public int Quantity { get; set; }
+    public DateTime LastUpdated { get; set; } = DateTime.Now;
+}
+
+/// <summary>
+/// كيان مؤقت في الذاكرة فقط — يُمثّل سطرًا في قائمة الإضافة قبل الحفظ الجماعي.
+/// لا يُخزَّن في قاعدة البيانات.
+/// </summary>
+public class StockEntryDraft
+{
+    public int ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public BloodGroup? BloodGroup { get; set; }
+    public int Quantity { get; set; }
 }
 </file>
 
@@ -308,6 +382,34 @@ public class OrganizationSettings
     public string Phone { get; set; } = string.Empty;
     public string? LogoPath { get; set; }           // مسار ملف الشعار
     public string OwnerPinHash { get; set; } = string.Empty; // SHA-256
+}
+</file>
+
+<file path="ProductCatalogItem.cs">
+namespace BloodBankAccounting.Models;
+
+/// <summary>
+/// كتالوج الأصناف — كل سجل يمثل صنفاً مستقلاً (اسم + سعر + حد طلب).
+/// الفصيلة لا تنتمي لتعريف الصنف — تُحدَّد عند إدخال وحدات الدم في المخزون.
+/// القيد الفريد: Name (مطبَّق على مستوى الكود وقاعدة البيانات).
+/// </summary>
+public class ProductCatalogItem
+{
+    public int Id { get; set; }
+
+    /// <summary>اسم الصنف — مثل "كرات دم مكدسة"، "بلازما طازجة مجمدة"</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>سعر البيع الافتراضي — يُستخدم مرجعاً عند إنشاء الفواتير</summary>
+    public decimal DefaultSalePrice { get; set; }
+
+    /// <summary>الحد الأدنى للمخزون الذي يُفعِّل تنبيه إعادة الطلب — اختياري</summary>
+    public int? ReorderLevel { get; set; }
+
+    /// <summary>Soft delete — عند التعطيل لا يُعرض في القوائم لكن يبقى في السجلات التاريخية</summary>
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
 }
 </file>
 

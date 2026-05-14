@@ -75,6 +75,14 @@ public partial class MainWindowViewModel : ViewModelBase
         ActivePage = "BloodInventory";
     }
 
+    [RelayCommand]
+    private void NavigateToProductCatalog()
+    {
+        CurrentPage = new ProductCatalogViewModel();
+        CurrentPageTitle = "إدارة الأصناف";
+        ActivePage = "ProductCatalog";
+    }
+
     /// <summary>
     /// لا ينتقل مباشرة — يُطلق الحدث كي يتحقق MainWindow من الـ PIN أولاً.
     /// </summary>

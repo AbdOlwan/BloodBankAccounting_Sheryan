@@ -10,42 +10,38 @@ public partial class BloodInventoryView : UserControl
     {
         InitializeComponent();
 
-        // ??? ????? ??????? ???????? ??? ????? ?????? ????????
-        // ????? ??? ???? ???????? ??? ??? ????? ???? ??????
-        // ???????? ????? ?????? ?????? ?????? ??? ?? ???.
-        Loaded += (_, _) =>
-        {
-            TxtBagNumber.Focus();
-            ActivateScanBorder();
-        };
+        //Loaded += (_, _) =>
+        //{
+        //    TxtBagNumber.Focus();
+        //    ActivateScanBorder();
+        //};
 
-        TxtBagNumber.GotFocus += (_, _) => ActivateScanBorder();
-        TxtBagNumber.LostFocus += (_, _) => DeactivateScanBorder();
+        //TxtBagNumber.GotFocus += (_, _) => ActivateScanBorder();
+        //TxtBagNumber.LostFocus += (_, _) => DeactivateScanBorder();
     }
 
-    // ??? ??? ?????? ???????? ? ????? ????? ?????????????????
-    private void ScanIconBorder_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        TxtBagNumber.Focus();
-        TxtBagNumber.SelectAll();
-    }
+    //private void ScanIconBorder_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    //{
+    //    TxtBagNumber.Focus();
+    //    TxtBagNumber.SelectAll();
+    //}
 
-    // ??? ????? ??? ?????? ??? ??????? ??????????????????????
-    private void ActivateScanBorder()
-    {
-        BarcodeFieldBorder.BorderBrush =
-            new SolidColorBrush(Color.FromRgb(0xC0, 0x39, 0x2B)); // PrimaryBrush
-        BarcodeFieldBorder.BorderThickness = new Thickness(2);
-        ScanIconBorder.Background =
-            new SolidColorBrush(Color.FromRgb(0xC0, 0x39, 0x2B));
-    }
+    //// ??? ????? ??? ?????? ??? ??????? ??????????????????????
+    //private void ActivateScanBorder()
+    //{
+    //    BarcodeFieldBorder.BorderBrush =
+    //        new SolidColorBrush(Color.FromRgb(0xC0, 0x39, 0x2B)); // PrimaryBrush
+    //    BarcodeFieldBorder.BorderThickness = new Thickness(2);
+    //    ScanIconBorder.Background =
+    //        new SolidColorBrush(Color.FromRgb(0xC0, 0x39, 0x2B));
+    //}
 
-    private void DeactivateScanBorder()
-    {
-        BarcodeFieldBorder.BorderBrush =
-            new SolidColorBrush(Color.FromRgb(0xE5, 0xE8, 0xEC));
-        BarcodeFieldBorder.BorderThickness = new Thickness(1.5);
-        ScanIconBorder.Background =
-            new SolidColorBrush(Color.FromRgb(0x1A, 0x27, 0x44));
-    }
+    //private void DeactivateScanBorder()
+    //{
+    //    BarcodeFieldBorder.BorderBrush =
+    //        new SolidColorBrush(Color.FromRgb(0xE5, 0xE8, 0xEC));
+    //    BarcodeFieldBorder.BorderThickness = new Thickness(1.5);
+    //    ScanIconBorder.Background =
+    //        new SolidColorBrush(Color.FromRgb(0x1A, 0x27, 0x44));
+    //}
 }

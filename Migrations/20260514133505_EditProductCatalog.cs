@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace BloodBankAccounting.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigration : Migration
+    public partial class EditProductCatalog : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -32,6 +34,24 @@ namespace BloodBankAccounting.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "BloodProducts",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    IsbtCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    SortOrder = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    DefaultSalePrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    ReorderLevel = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BloodProducts", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Customers",
                 columns: table => new
                 {
@@ -52,6 +72,41 @@ namespace BloodBankAccounting.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "OrgSettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BankName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    SubTitle = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Address = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    Phone = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    LogoPath = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    OwnerPinHash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OrgSettings", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProductCatalogItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    DefaultSalePrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    ReorderLevel = table.Column<int>(type: "int", nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProductCatalogItems", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Safes",
                 columns: table => new
                 {
@@ -65,6 +120,28 @@ namespace BloodBankAccounting.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Safes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "BloodStocks",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProductId = table.Column<int>(type: "int", nullable: false),
+                    BloodGroup = table.Column<string>(type: "nvarchar(450)", nullable: true),
+                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    LastUpdated = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_BloodStocks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_BloodStocks_BloodProducts_ProductId",
+                        column: x => x.ProductId,
+                        principalTable: "BloodProducts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -105,6 +182,37 @@ namespace BloodBankAccounting.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "InvoiceAuditLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    InvoiceId = table.Column<int>(type: "int", nullable: false),
+                    EditedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    OldDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    OldDiscountAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    OldTotalAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    OldPaidAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    OldNotes = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    NewDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    NewDiscountAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    NewTotalAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    NewPaidAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    NewNotes = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FinancialImpactSummary = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_InvoiceAuditLogs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_InvoiceAuditLogs_Invoices_InvoiceId",
+                        column: x => x.InvoiceId,
+                        principalTable: "Invoices",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "InvoiceLines",
                 columns: table => new
                 {
@@ -112,7 +220,7 @@ namespace BloodBankAccounting.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ProductName = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: false),
                     InvoiceId = table.Column<int>(type: "int", nullable: false),
-                    BloodBagId = table.Column<int>(type: "int", nullable: false),
+                    BloodBagId = table.Column<int>(type: "int", nullable: true),
                     UnitPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Quantity = table.Column<int>(type: "int", nullable: false),
                     Total = table.Column<decimal>(type: "decimal(18,2)", nullable: false)
@@ -175,6 +283,37 @@ namespace BloodBankAccounting.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ElectronicPaymentDetails",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Method = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    FromAccountName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    ToAccountName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    TransactionReference = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    TransactionDateTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    InvoiceId = table.Column<int>(type: "int", nullable: true),
+                    ReceiptVoucherId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ElectronicPaymentDetails", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ElectronicPaymentDetails_Invoices_InvoiceId",
+                        column: x => x.InvoiceId,
+                        principalTable: "Invoices",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ElectronicPaymentDetails_ReceiptVouchers_ReceiptVoucherId",
+                        column: x => x.ReceiptVoucherId,
+                        principalTable: "ReceiptVouchers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "JournalEntries",
                 columns: table => new
                 {
@@ -210,9 +349,33 @@ namespace BloodBankAccounting.Migrations
                 });
 
             migrationBuilder.InsertData(
+                table: "BloodProducts",
+                columns: new[] { "Id", "DefaultSalePrice", "IsActive", "IsbtCode", "Name", "ReorderLevel", "SortOrder" },
+                values: new object[,]
+                {
+                    { 1, 0m, true, null, "دم كامل", null, 1 },
+                    { 2, 0m, true, "E7428", "كرات دم مكدسة", null, 2 },
+                    { 3, 0m, true, null, "بلازما طازجة مجمدة", null, 3 },
+                    { 4, 0m, true, null, "كرايو - راسب أبيض", null, 4 },
+                    { 5, 0m, true, "E0582", "وحدة صفائح", null, 5 },
+                    { 6, 0m, true, null, "كيس دم أطفال", null, 6 },
+                    { 7, 0m, true, null, "فلترة كيس دم", null, 7 },
+                    { 8, 0m, true, null, "غسيل كيس دم", null, 8 }
+                });
+
+            migrationBuilder.InsertData(
+                table: "OrgSettings",
+                columns: new[] { "Id", "Address", "BankName", "LogoPath", "OwnerPinHash", "Phone", "SubTitle" },
+                values: new object[] { 1, "", "بنك الدم", null, "", "", "إدارة المحاسبة والمستودعات" });
+
+            migrationBuilder.InsertData(
                 table: "Safes",
                 columns: new[] { "Id", "Balance", "IsMain", "Name", "Type" },
-                values: new object[] { 1, 0m, true, "الخزينة الرئيسية", "Cash" });
+                values: new object[,]
+                {
+                    { 1, 0m, true, "الخزينة الرئيسية", "Cash" },
+                    { 2, 0m, false, "الخزينة الإلكترونية", "Electronic" }
+                });
 
             migrationBuilder.CreateIndex(
                 name: "IX_BloodBags_BagNumber",
@@ -221,9 +384,41 @@ namespace BloodBankAccounting.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_BloodProducts_Name",
+                table: "BloodProducts",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BloodStocks_ProductId_BloodGroup",
+                table: "BloodStocks",
+                columns: new[] { "ProductId", "BloodGroup" },
+                unique: true,
+                filter: "[BloodGroup] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Customers_Name",
                 table: "Customers",
                 column: "Name");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ElectronicPaymentDetails_InvoiceId",
+                table: "ElectronicPaymentDetails",
+                column: "InvoiceId",
+                unique: true,
+                filter: "[InvoiceId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ElectronicPaymentDetails_ReceiptVoucherId",
+                table: "ElectronicPaymentDetails",
+                column: "ReceiptVoucherId",
+                unique: true,
+                filter: "[ReceiptVoucherId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_InvoiceAuditLogs_InvoiceId",
+                table: "InvoiceAuditLogs",
+                column: "InvoiceId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_InvoiceLines_BloodBagId",
@@ -267,6 +462,12 @@ namespace BloodBankAccounting.Migrations
                 columns: new[] { "RefType", "RefId" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_ProductCatalogItems_Name",
+                table: "ProductCatalogItems",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ReceiptVouchers_CustomerId",
                 table: "ReceiptVouchers",
                 column: "CustomerId");
@@ -292,10 +493,28 @@ namespace BloodBankAccounting.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "BloodStocks");
+
+            migrationBuilder.DropTable(
+                name: "ElectronicPaymentDetails");
+
+            migrationBuilder.DropTable(
+                name: "InvoiceAuditLogs");
+
+            migrationBuilder.DropTable(
                 name: "InvoiceLines");
 
             migrationBuilder.DropTable(
                 name: "JournalEntries");
+
+            migrationBuilder.DropTable(
+                name: "OrgSettings");
+
+            migrationBuilder.DropTable(
+                name: "ProductCatalogItems");
+
+            migrationBuilder.DropTable(
+                name: "BloodProducts");
 
             migrationBuilder.DropTable(
                 name: "BloodBags");

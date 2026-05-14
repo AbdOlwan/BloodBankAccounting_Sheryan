@@ -186,61 +186,177 @@ public partial class CustomersViewModel : ViewModelBase
 }
 
 // ════════════════════════════════════════════════════════════
-//  BLOOD INVENTORY
+//  BLOOD INVENTORY  (نظام المخزون المجمع)
 // ════════════════════════════════════════════════════════════
 public partial class BloodInventoryViewModel : ViewModelBase
 {
-    public ObservableCollection<BloodBag> Bags { get; } = [];
+    // ── جدول المخزون الحالي ───────────────────────────────────────────
+    public ObservableCollection<BloodStock> StockRows { get; } = [];
+    private List<BloodStock> _allStockRows = [];
 
-    // Form
-    [ObservableProperty] private string _bagNumber = string.Empty;
-    [ObservableProperty] private BloodGroup _bloodGroup = BloodGroup.APositive;
-    [ObservableProperty] private decimal _costPrice;
-    [ObservableProperty] private decimal _salePrice;
-    [ObservableProperty] private DateTime _expiryDate = DateTime.Today.AddDays(35);
-    [ObservableProperty] private BloodBagStatus _filterStatus = BloodBagStatus.Available;
+    // ── قائمة الإدخال المؤقتة (staging) قبل الحفظ الجماعي ────────────
+    public ObservableCollection<StockEntryDraft> PendingEntries { get; } = [];
 
-    public IEnumerable<BloodGroup> BloodGroups { get; } = Enum.GetValues<BloodGroup>();
-    public IEnumerable<BloodBagStatus> StatusOptions { get; } = Enum.GetValues<BloodBagStatus>();
+    // ── مصادر القوائم المنسدلة ─────────────────────────────────────────
+    public ObservableCollection<BloodProduct> Products { get; } = [];
+
+    /// <summary>null = بدون فصيلة (أول عنصر في القائمة)</summary>
+    public IEnumerable<BloodGroup?> BloodGroups { get; } =
+        new BloodGroup?[] { null }
+        .Concat(Enum.GetValues<BloodGroup>().Cast<BloodGroup?>());
+
+    // ── حقول نموذج الإدخال ────────────────────────────────────────────
+    [ObservableProperty] private BloodProduct? _selectedProduct;
+    [ObservableProperty] private BloodGroup? _selectedBloodGroup = BloodGroup.APositive;
+    [ObservableProperty] private int _quantity = 1;
+
+    // ── بحث في جدول المخزون ───────────────────────────────────────────
+    [ObservableProperty] private string _filterText = string.Empty;
+    partial void OnFilterTextChanged(string value) => ApplyFilter();
 
     public BloodInventoryViewModel() { _ = LoadAsync(); }
 
-    partial void OnFilterStatusChanged(BloodBagStatus value) { _ = LoadAsync(); }
-
+    // ────────────────────────────────────────────────────────────────────
+    //  تحميل البيانات
+    // ────────────────────────────────────────────────────────────────────
     private async Task LoadAsync()
     {
-        using var db = new AppDbContext();
-        var list = await db.BloodBags
-                               .Where(b => b.Status == FilterStatus)
-                               .OrderBy(b => b.ExpiryDate)
-                               .ToListAsync();
-        Bags.Clear();
-        list.ForEach(Bags.Add);
+        IsBusy = true;
+        try
+        {
+            using var db = new AppDbContext();
+
+            // أصناف المنتجات (للقائمة المنسدلة)
+            var products = await db.BloodProducts
+                .Where(p => p.IsActive)
+                .OrderBy(p => p.SortOrder)
+                .ToListAsync();
+            Products.Clear();
+            products.ForEach(Products.Add);
+
+            // المخزون الحالي كاملًا
+            _allStockRows = await db.BloodStocks
+                .Include(s => s.Product)
+                .OrderBy(s => s.Product.SortOrder)
+                .ThenBy(s => s.BloodGroup)
+                .ToListAsync();
+
+            ApplyFilter();
+        }
+        finally { IsBusy = false; }
+    }
+
+    private void ApplyFilter()
+    {
+        var q = FilterText.Trim();
+        var filtered = string.IsNullOrEmpty(q)
+            ? _allStockRows
+            : _allStockRows.Where(s =>
+                s.Product.Name.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        StockRows.Clear();
+        filtered.ForEach(StockRows.Add);
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    //  إضافة سطر إلى قائمة الانتظار
+    // ────────────────────────────────────────────────────────────────────
+    [RelayCommand]
+    private void AddToPending()
+    {
+        if (SelectedProduct is null) { ShowError("اختر صنف الكيس أولًا"); return; }
+        if (Quantity <= 0) { ShowError("الكمية يجب أن تكون أكبر من صفر"); return; }
+
+        // دمج مع إدخال موجود بنفس الصنف والفصيلة
+        var existing = PendingEntries.FirstOrDefault(
+            e => e.ProductId == SelectedProduct.Id && e.BloodGroup == SelectedBloodGroup);
+
+        if (existing is not null)
+        {
+            // استبدال السجل لتحديث الـ UI (ObservableCollection لا تلاحظ تغيير الخصائص الداخلية)
+            var idx = PendingEntries.IndexOf(existing);
+            PendingEntries[idx] = new StockEntryDraft
+            {
+                ProductId = existing.ProductId,
+                ProductName = existing.ProductName,
+                BloodGroup = existing.BloodGroup,
+                Quantity = existing.Quantity + Quantity
+            };
+        }
+        else
+        {
+            PendingEntries.Add(new StockEntryDraft
+            {
+                ProductId = SelectedProduct.Id,
+                ProductName = SelectedProduct.Name,
+                BloodGroup = SelectedBloodGroup,
+                Quantity = Quantity
+            });
+        }
+
+        // إعادة تهيئة الكمية فقط — الصنف والفصيلة تبقيان للتسهيل
+        Quantity = 1;
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    //  حذف سطر من قائمة الانتظار
+    // ────────────────────────────────────────────────────────────────────
+    [RelayCommand]
+    private void RemoveFromPending(StockEntryDraft entry)
+        => PendingEntries.Remove(entry);
+
+    // ────────────────────────────────────────────────────────────────────
+    //  حفظ جميع الإدخالات دفعة واحدة
+    // ────────────────────────────────────────────────────────────────────
+    [RelayCommand]
+    private async Task SaveAllAsync()
+    {
+        if (PendingEntries.Count == 0) { ShowError("لا توجد إدخالات للحفظ"); return; }
+
+        int savedCount = PendingEntries.Count;
+        IsBusy = true;
+        try
+        {
+            using var db = new AppDbContext();
+
+            foreach (var draft in PendingEntries)
+            {
+                // البحث عن سجل مخزون موجود بنفس الصنف والفصيلة
+                var stock = await db.BloodStocks.FirstOrDefaultAsync(
+                    s => s.ProductId == draft.ProductId && s.BloodGroup == draft.BloodGroup);
+
+                if (stock is not null)
+                {
+                    // سجل موجود → زيادة الكمية (يعمل سواء كان الإدخال يدويًا أو بالباركود)
+                    stock.Quantity += draft.Quantity;
+                    stock.LastUpdated = DateTime.Now;
+                }
+                else
+                {
+                    // سجل جديد
+                    db.BloodStocks.Add(new BloodStock
+                    {
+                        ProductId = draft.ProductId,
+                        BloodGroup = draft.BloodGroup,
+                        Quantity = draft.Quantity
+                    });
+                }
+            }
+
+            await db.SaveChangesAsync();
+            PendingEntries.Clear();
+            ShowSuccess($"تم حفظ {savedCount} {(savedCount == 1 ? "إدخال" : "إدخالات")} بنجاح ✓");
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowError($"خطأ أثناء الحفظ: {ex.Message}");
+        }
+        finally { IsBusy = false; }
     }
 
     [RelayCommand]
-    private async Task AddBagAsync()
-    {
-        if (string.IsNullOrWhiteSpace(BagNumber)) { ShowError("رقم الكيس مطلوب"); return; }
-        if (SalePrice <= 0) { ShowError("سعر البيع مطلوب"); return; }
-
-        using var db = new AppDbContext();
-        if (await db.BloodBags.AnyAsync(b => b.BagNumber == BagNumber))
-        { ShowError("رقم الكيس مستخدم بالفعل"); return; }
-
-        db.BloodBags.Add(new BloodBag
-        {
-            BagNumber = BagNumber,
-            BloodGroup = BloodGroup,
-            CostPrice = CostPrice,
-            SalePrice = SalePrice,
-            ExpiryDate = ExpiryDate
-        });
-        await db.SaveChangesAsync();
-
-        BagNumber = string.Empty;
-        await LoadAsync();
-    }
+    private async Task RefreshAsync() => await LoadAsync();
 }
 
 // ════════════════════════════════════════════════════════════

@@ -16,6 +16,9 @@
     <Compile Update="Views\PinDialog.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="Views\ProductCatalogView.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Update="Views\TrialView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>

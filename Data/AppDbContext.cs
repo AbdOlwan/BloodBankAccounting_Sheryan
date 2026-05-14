@@ -1,7 +1,6 @@
 using BloodBankAccounting.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using System.Reflection.Emit;
 
 namespace BloodBankAccounting.Data;
 
@@ -14,10 +13,12 @@ public class AppDbContext : DbContext
     public DbSet<InvoiceLine> InvoiceLines { get; set; }
     public DbSet<ReceiptVoucher> ReceiptVouchers { get; set; }
     public DbSet<JournalEntry> JournalEntries { get; set; }
-    public DbSet<OrganizationSettings> OrgSettings { get; set; }   // ← جديد
+    public DbSet<OrganizationSettings> OrgSettings { get; set; }
     public DbSet<InvoiceAuditLog> InvoiceAuditLogs => Set<InvoiceAuditLog>();
-
     public DbSet<ElectronicPaymentDetail> ElectronicPaymentDetails { get; set; }
+    public DbSet<BloodProduct> BloodProducts { get; set; }
+    public DbSet<BloodStock> BloodStocks { get; set; }
+    public DbSet<ProductCatalogItem> ProductCatalogItems { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -144,7 +145,6 @@ public class AppDbContext : DbContext
              .IsRequired(false).OnDelete(DeleteBehavior.Cascade);
         });
 
-
         // ─── ReceiptVoucher ───────────────────────────────────
         mb.Entity<ReceiptVoucher>(e =>
         {
@@ -205,6 +205,48 @@ public class AppDbContext : DbContext
             e.Property(x => x.OwnerPinHash).HasMaxLength(64);
         });
 
+        // ─── BloodProduct ──────────────────────────────────────────
+        mb.Entity<BloodProduct>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.IsbtCode).HasMaxLength(20);
+            // ← جديد
+            e.Property(x => x.DefaultSalePrice).HasColumnType("decimal(18,2)");
+            // ReorderLevel هو int? — EF يتعامل معه تلقائيًا بدون تهيئة إضافية
+
+            // فهرس فريد على الاسم
+            e.HasIndex(x => x.Name).IsUnique();
+        });
+        // ─── BloodStock ────────────────────────────────────────────
+        mb.Entity<BloodStock>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.BloodGroup).HasConversion<string>();
+
+            e.HasOne(x => x.Product)
+             .WithMany(x => x.StockEntries)
+             .HasForeignKey(x => x.ProductId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // فهرس فريد للصنف + الفصيلة (مع استثناء NULL من القيد)
+            e.HasIndex(x => new { x.ProductId, x.BloodGroup })
+             .IsUnique()
+             .HasFilter("[BloodGroup] IS NOT NULL");
+        });
+
+        // ─── ProductCatalogItem ────────────────────────────────────────
+        // الفصيلة مُحذوفة — الصنف يُعرَّف بالاسم فقط
+        mb.Entity<ProductCatalogItem>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.DefaultSalePrice).HasColumnType("decimal(18,2)");
+
+            // قيد فريد على الاسم فقط
+            e.HasIndex(x => x.Name).IsUnique();
+        });
+
         // ─── Seed ─────────────────────────────────────────────
         mb.Entity<Safe>().HasData(
              new Safe { Id = 1, Name = "الخزينة الرئيسية", Type = SafeType.Cash, Balance = 0, IsMain = true },
@@ -220,6 +262,17 @@ public class AppDbContext : DbContext
                 Address = string.Empty,
                 Phone = string.Empty
             }
+        );
+
+        mb.Entity<BloodProduct>().HasData(
+            new BloodProduct { Id = 1, Name = "دم كامل", SortOrder = 1 },
+            new BloodProduct { Id = 2, Name = "كرات دم مكدسة", IsbtCode = "E7428", SortOrder = 2 },
+            new BloodProduct { Id = 3, Name = "بلازما طازجة مجمدة", SortOrder = 3 },
+            new BloodProduct { Id = 4, Name = "كرايو - راسب أبيض", SortOrder = 4 },
+            new BloodProduct { Id = 5, Name = "وحدة صفائح", IsbtCode = "E0582", SortOrder = 5 },
+            new BloodProduct { Id = 6, Name = "كيس دم أطفال", SortOrder = 6 },
+            new BloodProduct { Id = 7, Name = "فلترة كيس دم", SortOrder = 7 },
+            new BloodProduct { Id = 8, Name = "غسيل كيس دم", SortOrder = 8 }
         );
     }
 }
