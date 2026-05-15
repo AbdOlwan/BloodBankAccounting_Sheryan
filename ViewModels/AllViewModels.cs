@@ -207,7 +207,7 @@ public partial class BloodInventoryViewModel : ViewModelBase
 
     // ── حقول نموذج الإدخال ────────────────────────────────────────────
     [ObservableProperty] private BloodProduct? _selectedProduct;
-    [ObservableProperty] private BloodGroup? _selectedBloodGroup = BloodGroup.APositive;
+    [ObservableProperty] private BloodGroup? _selectedBloodGroup;
     [ObservableProperty] private int _quantity = 1;
 
     // ── بحث في جدول المخزون ───────────────────────────────────────────

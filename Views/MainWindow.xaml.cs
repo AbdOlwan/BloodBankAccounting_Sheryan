@@ -1,92 +1,102 @@
-﻿// MainWindow.xaml.cs
-using BloodBankAccounting.ViewModels;
+﻿using BloodBankAccounting.ViewModels;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 
 namespace BloodBankAccounting.Views;
 
 public partial class MainWindow : Window
 {
-    // ❌ احذف السطر ده تماماً:
-    // private const string DebtReportPinHash = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4";
-
-    
-    private static readonly TimeSpan ClickWindow = TimeSpan.FromSeconds(3);
-
     private MainWindowViewModel? _vm;
+    private readonly DispatcherTimer _collapseTimer;
+    private bool _sidebarOpen = false;
+
+    private const double ExpandedWidth = 220;
+    private const double TriggerZone = 32;   // px من الحافة اليمنى تفتح الـ Sidebar
 
     public MainWindow()
     {
         InitializeComponent();
 
+        _collapseTimer = new DispatcherTimer
+        { Interval = TimeSpan.FromMilliseconds(380) };
+        _collapseTimer.Tick += (_, _) =>
+        {
+            _collapseTimer.Stop();
+            AnimateSidebar(false);
+        };
+
         if (DataContext is MainWindowViewModel vm)
         {
             _vm = vm;
             vm.DebtReportAccessRequested += OnDebtReportAccessRequested;
+            vm.PropertyChanged += OnVmPropertyChanged;
         }
     }
 
-    // ─── معالجة طلب الدخول لتقرير الديون ─────────────────────────────────
+    // ─── Auto Sidebar ─────────────────────────────────────────────────────
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+
+        // FlowDirection=RTL → الـ Sidebar جهة اليمين → X قريب من ActualWidth
+        double x = e.GetPosition(this).X;
+        double zone = _sidebarOpen ? ExpandedWidth : TriggerZone;
+        bool inZone = x > ActualWidth - zone;
+        bool isPinned = _vm?.IsSidebarPinned ?? false;
+
+        if (inZone)
+        {
+            _collapseTimer.Stop();
+            if (!_sidebarOpen) AnimateSidebar(true);
+        }
+        else if (!isPinned && _sidebarOpen)
+        {
+            _collapseTimer.Start();
+        }
+    }
+
+    private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainWindowViewModel.IsSidebarPinned)) return;
+
+        if (_vm!.IsSidebarPinned)
+        {
+            _collapseTimer.Stop();
+            AnimateSidebar(true);
+        }
+        // unpinned: الماوس هو اللي يتحكم في الإغلاق
+    }
+
+    private void AnimateSidebar(bool expand)
+    {
+        _sidebarOpen = expand;
+        SidebarBorder.BeginAnimation(WidthProperty, new DoubleAnimation
+        {
+            To = expand ? ExpandedWidth : 0,
+            Duration = TimeSpan.FromMilliseconds(210),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+        });
+    }
+
+    // ─── Debt Report PIN ─────────────────────────────────────────────────
     private async void OnDebtReportAccessRequested()
     {
         if (_vm is null) return;
 
-        // ✅ لو مفيش PIN مضبوط في DB — افتح مباشرة بدون حوار
-        bool isProtected = await _vm.IsDebtReportProtectedAsync();
-        if (!isProtected)
-        {
-            _vm.OpenDebtReport();
-            return;
-        }
+        if (!await _vm.IsDebtReportProtectedAsync())
+        { _vm.OpenDebtReport(); return; }
 
-        // ✅ اطلب الـ PIN
         var pin = PinDialog.Show(this);
-        if (pin is null) return;  // ألغى المستخدم
+        if (pin is null) return;
 
-        // ✅ تحقق من DB (نفس الـ hash اللي بيستخدمه Dashboard والخزينة)
-        bool valid = await _vm.VerifyDebtReportPinAsync(pin);
-        if (valid)
-        {
+        if (await _vm.VerifyDebtReportPinAsync(pin))
             _vm.OpenDebtReport();
-        }
         else
-        {
             MessageBox.Show(
                 "الرمز الذي أدخلته غير صحيح.\nليس لديك صلاحية الوصول إلى تقرير الديون.",
-                "وصول مرفوض",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-        }
+                "وصول مرفوض", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
-
-    //internal void LogoBorder_MouseDown(object sender, MouseButtonEventArgs e)
-    //{
-    //    var now = DateTime.Now;
-
-    //    if (_logoClickCount > 0 && (now - _firstClickTime) > ClickWindow)
-    //        _logoClickCount = 0;
-
-    //    if (_logoClickCount == 0)
-    //        _firstClickTime = now;
-
-    //    _logoClickCount++;
-
-    //    if (_logoClickCount >= RequiredClicks)
-    //    {
-    //        _logoClickCount = 0;
-    //        OpenAdminPanel();
-    //    }
-    //}
-
-    //private void OpenAdminPanel()
-    //{
-    //    var pwdDialog = new AdminPasswordDialog();
-    //    pwdDialog.ShowDialog();
-
-    //    if (pwdDialog.Authenticated)
-    //    {
-    //        var panel = new SecretAdminPanel();
-    //        panel.ShowDialog();
-    //    }
-    //}
 }

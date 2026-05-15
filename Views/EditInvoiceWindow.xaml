@@ -248,14 +248,27 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- اسم الصنف -->
+                <!-- اسم الصنف — مرتبط بالمخزون -->
                 <StackPanel Grid.Column="0">
-                    <TextBlock Style="{StaticResource Lbl}" Text="اسم الصنف الجديد"/>
-                    <ComboBox IsEditable="True"
-                              Text="{Binding NewLineName, UpdateSourceTrigger=PropertyChanged}"
-                              ItemsSource="{Binding BloodProductTypes}"
-                              FontSize="14" Padding="6,5"
-                              BorderBrush="#E5E8EC" BorderThickness="1.5"
-                              Background="#FAFBFC"/>
+                    <TextBlock Style="{StaticResource Lbl}" Text="اختر صنفاً من المخزون"/>
+                    <ComboBox ItemsSource="{Binding AvailableStocks}"
+              SelectedItem="{Binding SelectedStock}"
+              
+              IsEditable="False"
+              FontSize="14" Padding="6,5"
+              BorderBrush="#E5E8EC" BorderThickness="1.5"
+              Background="#FAFBFC">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="13"/>
+                                    <TextBlock Text=" (" FontSize="12" Foreground="#85929E"/>
+                                    <TextBlock Text="{Binding AvailableQty}" FontSize="12" Foreground="#1E8449" FontWeight="SemiBold"/>
+                                    <TextBlock Text=" متاح)" FontSize="12" Foreground="#85929E"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                 </StackPanel>
 
                 <!-- الكمية -->

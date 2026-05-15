@@ -23,14 +23,6 @@ public partial class InvoiceViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(RemainingAfterInitial))]
     private PaymentType _paymentType = PaymentType.Cash;
 
-    [ObservableProperty] private ElectronicPaymentMethod _electronicMethod = ElectronicPaymentMethod.InstaPay;
-    [ObservableProperty] private string _electronicFromAccount = string.Empty;
-    [ObservableProperty] private string _electronicToAccount = string.Empty;
-    [ObservableProperty] private string? _electronicTransactionRef;
-
-    public IEnumerable<ElectronicPaymentMethod> ElectronicMethods { get; }
-        = Enum.GetValues<ElectronicPaymentMethod>();
-
     [ObservableProperty] private Customer? _selectedCustomer;
     [ObservableProperty] private Safe? _selectedSafe;
 
@@ -64,6 +56,39 @@ public partial class InvoiceViewModel : ViewModelBase
     // ─── Barcode Scan ─────────────────────────────────────────
     [ObservableProperty] private string _scanBagNumber = string.Empty;
 
+    // ─── Stock-based entry ────────────────────────────────────
+    public ObservableCollection<BloodProduct> StockProducts { get; } = [];
+    public ObservableCollection<BloodGroup?> StockBloodGroups { get; } = [];
+    private List<BloodStock> _allStock = [];
+
+    [ObservableProperty] private BloodProduct? _selectedStockProduct;
+    [ObservableProperty] private BloodGroup? _selectedStockBloodGroup;
+    [ObservableProperty] private int _stockQty = 1;
+    [ObservableProperty] private int _availableQty;
+
+    partial void OnSelectedStockProductChanged(BloodProduct? value)
+    {
+        StockBloodGroups.Clear();
+        SelectedStockBloodGroup = null;
+        AvailableQty = 0;
+        if (value is null) return;
+
+        var groups = _allStock
+            .Where(s => s.ProductId == value.Id && s.Quantity > 0)
+            .Select(s => s.BloodGroup)
+            .ToList();
+
+        foreach (var g in groups) StockBloodGroups.Add(g);
+        SelectedStockBloodGroup = StockBloodGroups.FirstOrDefault();
+    }
+
+    partial void OnSelectedStockBloodGroupChanged(BloodGroup? value)
+    {
+        var stock = _allStock.FirstOrDefault(s =>
+            s.ProductId == SelectedStockProduct?.Id && s.BloodGroup == value);
+        AvailableQty = stock?.Quantity ?? 0;
+    }
+
     // ─── Lines ────────────────────────────────────────────────
     public ObservableCollection<InvoiceLineItem> Lines { get; } = [];
 
@@ -73,8 +98,8 @@ public partial class InvoiceViewModel : ViewModelBase
     [ObservableProperty] private decimal _totalAmount;
     public ObservableCollection<Safe> FilteredSafes { get; } = [];
     public bool IsSafeVisible => PaymentType is PaymentType.Cash
-                                       or PaymentType.Partial
-                                       or PaymentType.Electronic;
+                                      or PaymentType.Partial
+                                      or PaymentType.Electronic;
     public bool IsPartialVisible => PaymentType == PaymentType.Partial;
     public bool IsElectronicVisible => PaymentType == PaymentType.Electronic;
     public decimal RemainingAfterInitial => Math.Max(0, TotalAmount - InitialPayment);
@@ -120,6 +145,19 @@ public partial class InvoiceViewModel : ViewModelBase
             Customers.Clear(); customers.ForEach(Customers.Add);
             Safes.Clear(); safes.ForEach(Safes.Add);
             AvailableBags.Clear(); bags.ForEach(AvailableBags.Add);
+
+            _allStock = await db.BloodStocks
+                .Include(s => s.Product)
+                .Where(s => s.Quantity > 0 && s.Product.IsActive)
+                .OrderBy(s => s.Product.SortOrder)
+                .ThenBy(s => s.BloodGroup)
+                .ToListAsync();
+
+            StockProducts.Clear();
+            _allStock.Select(s => s.Product)
+                     .DistinctBy(p => p.Id)
+                     .ToList()
+                     .ForEach(StockProducts.Add);
 
             InvoiceNumber = await NumberGenerator.NextInvoiceNumberAsync(db);
 
@@ -270,6 +308,48 @@ public partial class InvoiceViewModel : ViewModelBase
         ScanBagNumber = string.Empty;
     }
 
+    // ─── إضافة صنف من المخزون ─────────────────────────────────
+    [RelayCommand]
+    private void AddStockLine()
+    {
+        if (SelectedStockProduct is null) { ShowError("اختر الصنف"); return; }
+        if (StockQty <= 0) { ShowError("الكمية يجب أن تكون أكبر من صفر"); return; }
+        if (StockQty > AvailableQty)
+        {
+            ShowError($"الكمية المطلوبة ({StockQty}) تتجاوز المتاح في المخزون ({AvailableQty})");
+            return;
+        }
+
+        var stock = _allStock.FirstOrDefault(s =>
+            s.ProductId == SelectedStockProduct.Id && s.BloodGroup == SelectedStockBloodGroup);
+
+        if (stock is null) { ShowError("لا يوجد مخزون لهذا الصنف والفصيلة"); return; }
+
+        if (Lines.Any(l => l.BloodStockId == stock.Id))
+        { ShowError("هذا الصنف والفصيلة مضافان بالفعل"); return; }
+
+        string groupLabel = SelectedStockBloodGroup.HasValue
+            ? SelectedStockBloodGroup.Value.ToArabic()
+            : "بدون فصيلة";
+
+        var line = new InvoiceLineItem
+        {
+            BloodStockId = stock.Id,
+            IsManual = false,
+            ProductName = $"{SelectedStockProduct.Name} — {groupLabel}",
+            UnitPrice = SelectedStockProduct.DefaultSalePrice,
+            Quantity = StockQty
+        };
+        line.PropertyChanged += (_, _) => RecalculateTotals();
+        Lines.Add(line);
+        RecalculateTotals();
+
+        // تحديث المتاح محلياً بدون إعادة تحميل
+        stock.Quantity -= StockQty;
+        StockQty = 1;
+        OnSelectedStockBloodGroupChanged(SelectedStockBloodGroup); // يحدث AvailableQty
+    }
+
     [RelayCommand]
     private void RemoveLine(InvoiceLineItem line)
     {
@@ -339,6 +419,20 @@ public partial class InvoiceViewModel : ViewModelBase
                 }
             }
 
+            // خصم المخزون للسطور المرتبطة بـ BloodStock
+            foreach (var line in Lines.Where(l => l.BloodStockId.HasValue))
+            {
+                var stockRow = await db.BloodStocks.FindAsync(line.BloodStockId!.Value);
+                if (stockRow is not null)
+                {
+                    stockRow.Quantity -= line.Quantity;
+                    if (stockRow.Quantity < 0)
+                        throw new InvalidOperationException(
+                            $"الكمية غير كافية في المخزون: {line.ProductName}");
+                    stockRow.LastUpdated = DateTime.Now;
+                }
+            }
+
             var customer = await db.Customers.FindAsync(SelectedCustomer!.Id);
 
             switch (PaymentType)
@@ -364,10 +458,9 @@ public partial class InvoiceViewModel : ViewModelBase
                     db.ElectronicPaymentDetails.Add(new ElectronicPaymentDetail
                     {
                         InvoiceId = invoice.Id,
-                        Method = ElectronicMethod,
-                        FromAccountName = ElectronicFromAccount.Trim(),
-                        ToAccountName = ElectronicToAccount.Trim(),
-                        TransactionReference = ElectronicTransactionRef?.Trim(),
+                        Method = ElectronicPaymentMethod.InstaPay,
+                        FromAccountName = "إلكتروني",
+                        ToAccountName = SelectedSafe.Name,
                         TransactionDateTime = DateTime.Now
                     });
                     break;
@@ -461,8 +554,6 @@ public partial class InvoiceViewModel : ViewModelBase
             if (SelectedSafe is null) { ShowError("اختر الخزينة الإلكترونية"); return false; }
             if (SelectedSafe.Type != SafeType.Electronic)
             { ShowError("يجب اختيار خزينة إلكترونية للدفع الإلكتروني"); return false; }
-            if (string.IsNullOrWhiteSpace(ElectronicFromAccount)) { ShowError("أدخل حساب/اسم المرسل"); return false; }
-            if (string.IsNullOrWhiteSpace(ElectronicToAccount)) { ShowError("أدخل الحساب المستلم"); return false; }
         }
         return true;
     }
@@ -478,10 +569,6 @@ public partial class InvoiceViewModel : ViewModelBase
         NewLineName = string.Empty;
         NewLineQty = 1;
         NewLineUnitPrice = 0;
-        ElectronicFromAccount = string.Empty;
-        ElectronicToAccount = string.Empty;
-        ElectronicTransactionRef = null;
-        ElectronicMethod = ElectronicPaymentMethod.InstaPay;
         await LoadAsync();
     }
 }
@@ -489,6 +576,7 @@ public partial class InvoiceViewModel : ViewModelBase
 public partial class InvoiceLineItem : ObservableObject
 {
     public int? BloodBagId { get; set; }
+    public int? BloodStockId { get; set; }   // ← أضف بعد BloodBagId
     public bool IsManual { get; set; }
     public string ProductName { get; set; } = string.Empty;
 

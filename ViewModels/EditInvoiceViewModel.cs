@@ -74,20 +74,17 @@ public partial class EditInvoiceViewModel : ViewModelBase
 
     public decimal NewLineTotal => NewLineQty * NewLineUnitPrice;
 
-    public IReadOnlyList<string> BloodProductTypes { get; } =
-    [
-        "دم كامل",
-        "كرات دم مكدسه",
-        "بلازما طازجه مجمده",
-        "كرايو - راسب اببض",
-        "٦ وحدات صفائح دموية",
-        " وحدة صفائح",
-        "فلترة كيس دم",
-        "غسيل كيس دم",
-        "كيس دم اطفال",
-        "كرات دم مكدسه موجب",
-        "كرات دم مكدسه سالب"
-    ];
+    // ─── مخزون متاح للاختيار ──────────────────────────────
+    public ObservableCollection<StockLineItem> AvailableStocks { get; } = [];
+
+    [ObservableProperty]
+    private StockLineItem? _selectedStock;
+
+    partial void OnSelectedStockChanged(StockLineItem? value)
+    {
+        if (value is null) return;
+        NewLineUnitPrice = value.DefaultPrice;
+    }
 
     // ════════════════════════════════════════════════════════════
     //  Result
@@ -102,6 +99,7 @@ public partial class EditInvoiceViewModel : ViewModelBase
     {
         InvoiceDbId = invoiceId;
         _ = LoadAsync(invoiceId);
+        _ = LoadStocksAsync();
     }
 
     private async Task LoadAsync(int invoiceId)
@@ -155,6 +153,8 @@ public partial class EditInvoiceViewModel : ViewModelBase
                 {
                     Id = line.Id,
                     BloodBagId = line.BloodBagId,
+                    BloodStockId = line.BloodStockId,
+                    OriginalQuantity = line.Quantity,
                     IsManual = !line.BloodBagId.HasValue,
                     ProductName = line.ProductName,
                     UnitPrice = line.UnitPrice,
@@ -175,28 +175,86 @@ public partial class EditInvoiceViewModel : ViewModelBase
         finally { IsBusy = false; }
     }
 
+    private async Task LoadStocksAsync()
+    {
+        try
+        {
+            using var db = new AppDbContext();
+            var stocks = await db.BloodStocks
+                .Include(s => s.Product)
+                .Where(s => s.Product.IsActive && s.Quantity > 0)
+                .OrderBy(s => s.Product.SortOrder)
+                .ThenBy(s => s.BloodGroup)
+                .ToListAsync();
+
+            AvailableStocks.Clear();
+            foreach (var s in stocks)
+            {
+                var bloodLabel = s.BloodGroup switch
+                {
+                    BloodGroup.APositive => "A+",
+                    BloodGroup.ANegative => "A-",
+                    BloodGroup.BPositive => "B+",
+                    BloodGroup.BNegative => "B-",
+                    BloodGroup.ABPositive => "AB+",
+                    BloodGroup.ABNegative => "AB-",
+                    BloodGroup.OPositive => "O+",
+                    BloodGroup.ONegative => "O-",
+                    _ => string.Empty
+                };
+                var display = string.IsNullOrEmpty(bloodLabel)
+                    ? s.Product.Name
+                    : $"{s.Product.Name} - {bloodLabel}";
+
+                AvailableStocks.Add(new StockLineItem
+                {
+                    BloodStockId = s.Id,
+                    ProductId = s.ProductId,
+                    DisplayName = display,
+                    DefaultPrice = s.Product.DefaultSalePrice,
+                    AvailableQty = s.Quantity
+                });
+            }
+        }
+        catch (Exception ex) { ShowError($"تعذّر تحميل المخزون:\n{ex.Message}"); }
+    }
+
     // ════════════════════════════════════════════════════════════
     //  Lines Commands
     // ════════════════════════════════════════════════════════════
     [RelayCommand]
     private void AddManualLine()
     {
-        if (string.IsNullOrWhiteSpace(NewLineName))
-        { ShowError("أدخل اسم الصنف"); return; }
+        if (SelectedStock is null)
+        { ShowError("اختر صنفاً من قائمة المخزون المتاح."); return; }
         if (NewLineQty <= 0)
-        { ShowError("الكمية يجب أن تكون أكبر من صفر"); return; }
-        if (NewLineUnitPrice <= 0)
-        { ShowError("أدخل سعر الوحدة"); return; }
+        { ShowError("الكمية يجب أن تكون أكبر من صفر."); return; }
+        if (NewLineUnitPrice < 0)
+        { ShowError("سعر الوحدة لا يمكن أن يكون سالباً."); return; }
+
+        // الكمية المستخدمة بالفعل من نفس السجل في السطور الجديدة غير المحفوظة
+        int alreadyUsed = Lines
+            .Where(l => l.Id == 0 && l.BloodStockId == SelectedStock.BloodStockId)
+            .Sum(l => l.Quantity);
+
+        int available = SelectedStock.AvailableQty - alreadyUsed;
+        if (NewLineQty > available)
+        {
+            ShowError($"الكمية المطلوبة ({NewLineQty}) تتجاوز المتاح في المخزون ({available}).");
+            return;
+        }
 
         var el = new EditableInvoiceLine
         {
-            Id = 0,   // جديد — لم يُحفظ بعد
+            Id = 0,
             BloodBagId = null,
+            BloodStockId = SelectedStock.BloodStockId,
             IsManual = true,
             IsOriginal = false,
-            ProductName = NewLineName.Trim(),
+            ProductName = SelectedStock.DisplayName,
             UnitPrice = NewLineUnitPrice,
-            Quantity = NewLineQty
+            Quantity = NewLineQty,
+            OriginalQuantity = 0
         };
         el.PropertyChanged += (_, _) =>
         {
@@ -208,7 +266,7 @@ public partial class EditInvoiceViewModel : ViewModelBase
         OnPropertyChanged(nameof(SubTotal));
         OnPropertyChanged(nameof(TotalAmount));
 
-        NewLineName = string.Empty;
+        SelectedStock = null;
         NewLineQty = 1;
         NewLineUnitPrice = 0;
     }
@@ -423,6 +481,10 @@ public partial class EditInvoiceViewModel : ViewModelBase
             Saved = true;
             ShowSuccess($"تم تعديل الفاتورة {InvoiceNumber} بنجاح ✓\n{financialImpact}");
         }
+        catch (InvalidOperationException ioe) when (ioe.Message == "insufficient_stock")
+        {
+            // الرسالة أُظهرت بالفعل داخل SyncLinesAsync
+        }
         catch (Exception ex)
         {
             var msg = ex.InnerException?.Message ?? ex.Message;
@@ -475,41 +537,85 @@ public partial class EditInvoiceViewModel : ViewModelBase
     /// مزامنة الأصناف: حذف المحذوفة، تحديث الموجودة، إضافة الجديدة.
     /// الأصناف المرتبطة بكيس دم تُحدَّث فقط (لا تُحذف).
     /// </summary>
-    private Task SyncLinesAsync(AppDbContext db, Invoice inv)
+    private async Task SyncLinesAsync(AppDbContext db, Invoice inv)
     {
         var uiIds = Lines
             .Where(l => l.Id > 0)
             .Select(l => l.Id)
             .ToHashSet();
 
-        // حذف الأصناف التي أُزيلت من الـ UI (يدوية فقط)
+        // ── حذف السطور المُزالة من الـ UI (يدوية فقط) ────────────────
         foreach (var dbLine in inv.Lines.ToList())
         {
             if (!uiIds.Contains(dbLine.Id) && !dbLine.BloodBagId.HasValue)
+            {
+                // إعادة الكمية للمخزون إذا كان السطر مرتبطاً بـ BloodStock
+                if (dbLine.BloodStockId.HasValue)
+                {
+                    var stock = await db.BloodStocks.FindAsync(dbLine.BloodStockId.Value);
+                    if (stock is not null)
+                    {
+                        stock.Quantity += dbLine.Quantity;
+                        stock.LastUpdated = DateTime.Now;
+                    }
+                }
                 db.InvoiceLines.Remove(dbLine);
+            }
         }
 
         foreach (var uiLine in Lines)
         {
             if (uiLine.Id > 0)
             {
-                // تحديث صنف موجود
+                // ── تحديث سطر موجود ──────────────────────────────────
                 var dbLine = inv.Lines.FirstOrDefault(l => l.Id == uiLine.Id);
-                if (dbLine is not null)
+                if (dbLine is null) continue;
+
+                // تسوية المخزون إذا تغيّرت الكمية
+                if (dbLine.BloodStockId.HasValue && uiLine.Quantity != dbLine.Quantity)
                 {
-                    dbLine.ProductName = uiLine.ProductName;
-                    dbLine.UnitPrice = uiLine.UnitPrice;
-                    dbLine.Quantity = uiLine.Quantity;
-                    dbLine.Total = uiLine.Total;
+                    var stock = await db.BloodStocks.FindAsync(dbLine.BloodStockId.Value);
+                    if (stock is not null)
+                    {
+                        int diff = uiLine.Quantity - dbLine.Quantity;  // موجب = زيادة → خصم
+                        if (diff > 0 && stock.Quantity < diff)
+                        {
+                            ShowError($"الكمية المطلوبة للصنف «{uiLine.ProductName}» تتجاوز المتاح في المخزون ({stock.Quantity}).");
+                            throw new InvalidOperationException("insufficient_stock");
+                        }
+                        stock.Quantity -= diff;
+                        stock.LastUpdated = DateTime.Now;
+                    }
                 }
+
+                dbLine.ProductName = uiLine.ProductName;
+                dbLine.UnitPrice = uiLine.UnitPrice;
+                dbLine.Quantity = uiLine.Quantity;
+                dbLine.Total = uiLine.Total;
             }
             else
             {
-                // إضافة صنف جديد
+                // ── إضافة سطر جديد ───────────────────────────────────
+                if (uiLine.BloodStockId.HasValue)
+                {
+                    var stock = await db.BloodStocks.FindAsync(uiLine.BloodStockId.Value);
+                    if (stock is not null)
+                    {
+                        if (stock.Quantity < uiLine.Quantity)
+                        {
+                            ShowError($"الكمية المطلوبة للصنف «{uiLine.ProductName}» تتجاوز المتاح في المخزون ({stock.Quantity}).");
+                            throw new InvalidOperationException("insufficient_stock");
+                        }
+                        stock.Quantity -= uiLine.Quantity;
+                        stock.LastUpdated = DateTime.Now;
+                    }
+                }
+
                 db.InvoiceLines.Add(new InvoiceLine
                 {
                     InvoiceId = inv.Id,
                     BloodBagId = null,
+                    BloodStockId = uiLine.BloodStockId,
                     ProductName = uiLine.ProductName,
                     UnitPrice = uiLine.UnitPrice,
                     Quantity = uiLine.Quantity,
@@ -517,8 +623,6 @@ public partial class EditInvoiceViewModel : ViewModelBase
                 });
             }
         }
-        return Task.CompletedTask;
-    
     }
 
     private bool HasLineChanges()
@@ -571,6 +675,8 @@ public partial class EditableInvoiceLine : ObservableObject
 {
     public int Id { get; set; }
     public int? BloodBagId { get; set; }
+    public int? BloodStockId { get; set; }
+    public int OriginalQuantity { get; set; }
     public bool IsManual { get; set; }
     /// <summary>true = صنف أصلي من DB | false = مضاف جديد</summary>
     public bool IsOriginal { get; set; }
@@ -589,4 +695,16 @@ public partial class EditableInvoiceLine : ObservableObject
 
     /// <summary>الأصناف المرتبطة بكيس دم لا تُعدَّل ولا تُحذف</summary>
     public bool IsEditable => !BloodBagId.HasValue;
+}
+
+// ════════════════════════════════════════════════════════════
+//  عنصر في قائمة المخزون المتاح (للاختيار داخل نموذج الإضافة)
+// ════════════════════════════════════════════════════════════
+public class StockLineItem
+{
+    public int BloodStockId { get; set; }
+    public int ProductId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public decimal DefaultPrice { get; set; }
+    public int AvailableQty { get; set; }
 }

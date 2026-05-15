@@ -15,6 +15,12 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string _activePage = string.Empty;
     [ObservableProperty] private string _backupStatus = "جاري التحقق...";
 
+    // استبدل IsSidebarExpanded بـ IsSidebarPinned
+    [ObservableProperty] private bool _isSidebarPinned = false;
+
+    [RelayCommand]
+    private void ToggleSidebarPin() => IsSidebarPinned = !IsSidebarPinned;
+
     // ─── حدث طلب الدخول لتقرير الديون ───────────────────────────────────
     public event Action? DebtReportAccessRequested;
 

@@ -68,8 +68,7 @@
                         <DataTrigger Value="True">
                             <DataTrigger.Binding>
                                 <MultiBinding Converter="{StaticResource IsEqualConverter}">
-                                    <Binding Path="DataContext.ActivePage"
-                                             RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                    <Binding Path="ActivePage"/>
                                     <Binding Path="Tag"
                                              RelativeSource="{RelativeSource TemplatedParent}"/>
                                 </MultiBinding>

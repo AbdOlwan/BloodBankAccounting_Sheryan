@@ -412,43 +412,6 @@ namespace BloodBankAccounting.Migrations
                     b.ToTable("InvoiceAuditLogs");
                 });
 
-            modelBuilder.Entity("BloodBankAccounting.Models.InvoiceLine", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("BloodBagId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("InvoiceId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ProductName")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Total")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BloodBagId");
-
-                    b.HasIndex("InvoiceId");
-
-                    b.ToTable("InvoiceLines");
-                });
-
             modelBuilder.Entity("BloodBankAccounting.Models.JournalEntry", b =>
                 {
                     b.Property<int>("Id")
@@ -696,6 +659,48 @@ namespace BloodBankAccounting.Migrations
                         });
                 });
 
+            modelBuilder.Entity("InvoiceLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("BloodBagId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BloodStockId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BloodBagId");
+
+                    b.HasIndex("BloodStockId");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.ToTable("InvoiceLines");
+                });
+
             modelBuilder.Entity("BloodBankAccounting.Models.BloodStock", b =>
                 {
                     b.HasOne("BloodBankAccounting.Models.BloodProduct", "Product")
@@ -753,24 +758,6 @@ namespace BloodBankAccounting.Migrations
                     b.Navigation("Invoice");
                 });
 
-            modelBuilder.Entity("BloodBankAccounting.Models.InvoiceLine", b =>
-                {
-                    b.HasOne("BloodBankAccounting.Models.BloodBag", "BloodBag")
-                        .WithMany("InvoiceLines")
-                        .HasForeignKey("BloodBagId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("BloodBankAccounting.Models.Invoice", "Invoice")
-                        .WithMany("Lines")
-                        .HasForeignKey("InvoiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BloodBag");
-
-                    b.Navigation("Invoice");
-                });
-
             modelBuilder.Entity("BloodBankAccounting.Models.JournalEntry", b =>
                 {
                     b.HasOne("BloodBankAccounting.Models.Invoice", "Invoice")
@@ -811,6 +798,30 @@ namespace BloodBankAccounting.Migrations
                     b.Navigation("RelatedInvoice");
 
                     b.Navigation("Safe");
+                });
+
+            modelBuilder.Entity("InvoiceLine", b =>
+                {
+                    b.HasOne("BloodBankAccounting.Models.BloodBag", "BloodBag")
+                        .WithMany("InvoiceLines")
+                        .HasForeignKey("BloodBagId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("BloodBankAccounting.Models.BloodStock", "BloodStock")
+                        .WithMany()
+                        .HasForeignKey("BloodStockId");
+
+                    b.HasOne("BloodBankAccounting.Models.Invoice", "Invoice")
+                        .WithMany("Lines")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BloodBag");
+
+                    b.Navigation("BloodStock");
+
+                    b.Navigation("Invoice");
                 });
 
             modelBuilder.Entity("BloodBankAccounting.Models.BloodBag", b =>

@@ -20,12 +20,16 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="2*" MaxWidth="260" MinWidth="160"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="10*"/>
         </Grid.ColumnDefinitions>
 
         <!-- ════════════ SIDEBAR ══════════════════════════════ -->
-        <Border Grid.Column="0" Background="{StaticResource SidebarBrush}">
+        <Border x:Name="SidebarBorder"
+        Grid.Column="0"
+        Width="0"
+        ClipToBounds="True"
+        Background="{StaticResource SidebarBrush}">
             <DockPanel>
 
                 <!-- Logo — 5 ضغطات سريعة تفتح لوحة المطوّر -->
@@ -157,11 +161,46 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding CurrentPageTitle}"
-                               FontSize="15" FontWeight="Bold"
-                               Foreground="{StaticResource TextBrush}"
-                               VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+
+                        <Button Command="{Binding ToggleSidebarPinCommand}"
+        Width="34" Height="34"
+        Margin="0,0,12,0"
+        ToolTip="تثبيت القائمة"
+        Background="Transparent"
+        BorderThickness="0"
+        Cursor="Hand"
+        FocusVisualStyle="{x:Null}">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bg" CornerRadius="6" Background="Transparent">
+                                        <TextBlock x:Name="icon"
+                           Text="☰" FontSize="16"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bg" Property="Background"
+                            Value="{StaticResource BorderBrush}"/>
+                                        </Trigger>
+                                        <!-- تثبيت مفعّل → أيقونة مختلفة ولون مميز -->
+                                        <DataTrigger Binding="{Binding IsSidebarPinned}" Value="True">
+                                            <Setter TargetName="icon" Property="Text" Value="⊠"/>
+                                            <Setter TargetName="icon" Property="Foreground"
+                            Value="{StaticResource PrimaryBrush}"/>
+                                        </DataTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+
+                        <TextBlock Text="{Binding CurrentPageTitle}"
+               FontSize="15" FontWeight="Bold"
+               Foreground="{StaticResource TextBrush}"
+               VerticalAlignment="Center"/>
+                    </StackPanel>
 
                     <TextBlock Grid.Column="1"
                                xmlns:system="clr-namespace:System;assembly=mscorlib"

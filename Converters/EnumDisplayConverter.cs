@@ -10,6 +10,7 @@ public class EnumDisplayConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
+        if (value is null) return "بدون فصيلة";   // ← أضف هذا السطر فقط
         return value switch
         {
             // CustomerType

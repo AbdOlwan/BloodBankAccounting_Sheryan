@@ -1,8 +1,8 @@
-namespace BloodBankAccounting.Models;
+using BloodBankAccounting.Models;
 
 public class InvoiceLine
 {
-    public int Id        { get; set; }
+    public int Id { get; set; }
     public string ProductName { get; set; } = string.Empty;
 
     public int InvoiceId { get; set; }
@@ -11,7 +11,11 @@ public class InvoiceLine
     public int? BloodBagId { get; set; }
     public BloodBag? BloodBag { get; set; }
 
+    // ? ????: ??? ???? ??????? ??????
+    public int? BloodStockId { get; set; }
+    public BloodStock? BloodStock { get; set; }
+
     public decimal UnitPrice { get; set; }
-    public int Quantity      { get; set; } = 1;
-    public decimal Total     { get; set; }
+    public int Quantity { get; set; } = 1;
+    public decimal Total { get; set; }
 }

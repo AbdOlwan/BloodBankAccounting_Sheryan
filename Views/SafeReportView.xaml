@@ -23,388 +23,397 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <!-- 0: العنوان + زر القفل  -->
-            <RowDefinition Height="Auto"/>
-            <!-- 1: فلاتر التاريخ       -->
-            <RowDefinition Height="Auto"/>
-            <!-- 2: شريط البحث النصي    -->
-            <RowDefinition Height="Auto"/>
-            <!-- 3: ملخص الأرصدة        -->
-            <RowDefinition Height="Auto"/>
-            <!-- 4: زر الطباعة الكلية   -->
-            <RowDefinition Height="*"/>
-            <!-- 5: الجدول              -->
-        </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <!-- 0: العنوان + زر القفل  -->
+                <RowDefinition Height="Auto"/>
+                <!-- 1: فلاتر التاريخ       -->
+                <RowDefinition Height="Auto"/>
+                <!-- 2: شريط البحث النصي    -->
+                <RowDefinition Height="Auto"/>
+                <!-- 3: ملخص الأرصدة        -->
+                <RowDefinition Height="Auto"/>
+                <!-- 4: زر الطباعة الكلية   -->
+                <RowDefinition Height="Auto"/>
+                <!-- 5: الجدول              -->
+            </Grid.RowDefinitions>
 
-        <!-- ══════════════════════════════════════════════════════
-             Row 0: العنوان + زر القفل
-        ══════════════════════════════════════════════════════ -->
-        <Grid Grid.Row="0" Margin="0,0,0,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="1" Text="كشف حساب الخزينة"
-                       FontSize="22" FontWeight="Bold"
-                       Foreground="#C0392B" HorizontalAlignment="Right"/>
-            <Button Grid.Column="0" Command="{Binding ToggleFinancialLockCommand}"
-                    Background="#C0392B" Foreground="White"
-                    Padding="12,6" BorderThickness="0" Cursor="Hand">
+            <!-- ══════════════════════════════════════════════════════
+                 Row 0: العنوان + زر القفل
+            ══════════════════════════════════════════════════════ -->
+            <Grid Grid.Row="0" Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="1" Text="كشف حساب الخزينة"
+                           FontSize="22" FontWeight="Bold"
+                           Foreground="#C0392B" HorizontalAlignment="Right"/>
+                <Button Grid.Column="0" Command="{Binding ToggleFinancialLockCommand}"
+                        Background="#C0392B" Foreground="White"
+                        Padding="12,6" BorderThickness="0" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" CornerRadius="8"
+                                    Background="{TemplateBinding Background}"
+                                    Padding="{TemplateBinding Padding}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding LockIcon}"    FontSize="14" Margin="0,0,6,0"/>
+                                    <TextBlock Text="{Binding LockButtonText}" FontSize="12"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="#922B21"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+
+            <!-- ══════════════════════════════════════════════════════
+                 Row 1: فلاتر التاريخ + زر عرض
+            ══════════════════════════════════════════════════════ -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,10">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="الخزينة:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <!-- داخل Row 1، بعد ComboBox الخزينة وقبل TextBlock "من:" -->
+                        <ToggleButton x:Name="CombinedToggle"
+                      IsChecked="{Binding ShowCombined}"
+                      Margin="0,0,16,0"
+                      Height="30" Width="100">
+                            <ToggleButton.Style>
+                                <Style TargetType="{x:Type ToggleButton}">
+                                    <Setter Property="Content" Value="عرض مجمع"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter Property="Content" Value="عرض منفصل"/>
+                                            <Setter Property="Background" Value="#C0392B"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                            <Setter Property="BorderBrush" Value="#C0392B"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                        </ToggleButton>
+                        <ComboBox ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}"
+                                  DisplayMemberPath="Name"
+                                  Style="{StaticResource FormComboBox}" Width="180" Margin="0,0,16,0"/>
+
+                        <TextBlock Text="من:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <DatePicker SelectedDate="{Binding From}" Margin="0,0,16,0"/>
+                        <TextBlock Text="إلى:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <DatePicker SelectedDate="{Binding To}"   Margin="0,0,16,0"/>
+                        <Button Content="🔍  عرض" Command="{Binding LoadStatementCommand}"
+                                Style="{StaticResource SecondaryButton}"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- ══════════════════════════════════════════════════════
+                 Row 2: شريط البحث النصي الفوري
+            ══════════════════════════════════════════════════════ -->
+            <Border Grid.Row="2"
+                    Background="White" BorderBrush="#D2D2D7" BorderThickness="1"
+                    CornerRadius="10" Padding="12,8" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- أيقونة البحث  -->
+                        <ColumnDefinition Width="*"/>
+                        <!-- خانة النص     -->
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- زر المسح      -->
+                        <ColumnDefinition Width="Auto"/>
+                        <!-- عداد النتائج  -->
+                    </Grid.ColumnDefinitions>
+
+                    <!-- أيقونة البحث -->
+                    <TextBlock Grid.Column="0" Text="🔍"
+                               FontSize="16" VerticalAlignment="Center"
+                               Margin="0,0,10,0" Foreground="#8E8E93"/>
+
+                    <!-- خانة إدخال النص -->
+                    <TextBox Grid.Column="1"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="13" VerticalAlignment="Center"
+                             BorderThickness="0" Background="Transparent"
+                             FlowDirection="RightToLeft"
+                             ToolTip="ابحث بالتاريخ، النوع، البيان، أو المبلغ">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Style.Resources>
+                                    <!-- Placeholder نص -->
+                                    <VisualBrush x:Key="PlaceholderBrush" AlignmentX="Right" AlignmentY="Center" Stretch="None">
+                                        <VisualBrush.Visual>
+                                            <TextBlock Text="ابحث بالتاريخ، النوع، البيان، أو المبلغ..."
+                                                       Foreground="#BDBDBD" FontSize="13"
+                                                       FlowDirection="RightToLeft"/>
+                                        </VisualBrush.Visual>
+                                    </VisualBrush>
+                                </Style.Resources>
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Background" Value="{StaticResource PlaceholderBrush}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsFocused" Value="True">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <!-- زر مسح البحث — يظهر فقط لما يكون فيه نص -->
+                    <Button Grid.Column="2"
+                            Command="{Binding ClearSearchCommand}"
+                            ToolTip="مسح البحث"
+                            Cursor="Hand" Margin="8,0,10,0"
+                            Width="22" Height="22"
+                            VerticalAlignment="Center">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="cb" CornerRadius="11"
+                                                    Background="#BDBDBD">
+                                                <TextBlock Text="✕" Foreground="White"
+                                                           FontSize="11" FontWeight="Bold"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="cb" Property="Background" Value="#C0392B"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <!-- يظهر فقط لما SearchText ليس فارغاً -->
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SearchText}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+
+                    <!-- عداد النتائج -->
+                    <Border Grid.Column="3"
+                            Background="#F0F2F5" CornerRadius="8"
+                            Padding="8,3" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock FontSize="12" Foreground="#6E6E73" VerticalAlignment="Center">
+                                <Run Text="{Binding FilteredCount, Mode=OneWay}"/>
+                                <Run Text=" حركة"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+
+                </Grid>
+            </Border>
+
+            <!-- ══════════════════════════════════════════════════════
+                 Row 3: ملخص الأرصدة
+            ══════════════════════════════════════════════════════ -->
+            <Border Grid.Row="3" Background="#F5F5F7" BorderBrush="#D2D2D7" BorderThickness="1"
+                    CornerRadius="10" Padding="16" Margin="0,0,0,12"
+                    Visibility="{Binding IsFinancialUnlocked, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="110"/>
+                        <ColumnDefinition Width="*" MinWidth="110"/>
+                        <ColumnDefinition Width="*" MinWidth="110"/>
+                        <ColumnDefinition Width="*" MinWidth="110"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                        <TextBlock Text="الرصيد الافتتاحي" FontSize="10" Foreground="#6E6E73"/>
+                        <TextBlock Text="{Binding OpeningBalance, StringFormat=N2}" FontSize="16" FontWeight="Bold" Foreground="#1A5276"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                        <TextBlock Text="إجمالي الوارد" FontSize="10" Foreground="#6E6E73"/>
+                        <TextBlock Text="{Binding TotalDebit, StringFormat=N2}" FontSize="16" FontWeight="Bold" Foreground="#1E8449"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                        <TextBlock Text="إجمالي الصادر" FontSize="10" Foreground="#6E6E73"/>
+                        <TextBlock Text="{Binding TotalCredit, StringFormat=N2}" FontSize="16" FontWeight="Bold" Foreground="#7B241C"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                        <TextBlock Text="الرصيد الحالي" FontSize="10" Foreground="#6E6E73"/>
+                        <TextBlock Text="{Binding ClosingBalance, StringFormat=N2}" FontSize="18" FontWeight="Bold" Foreground="#C0392B"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Grid.Row="3" Background="#F5F5F7" BorderBrush="#D2D2D7" BorderThickness="1"
+                    CornerRadius="10" Padding="24" Margin="0,0,0,12"
+                    Visibility="{Binding IsFinancialUnlocked, Converter={StaticResource InvBoolToVis}}">
+                <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                    <TextBlock Text="🔒" FontSize="20" Margin="0,0,12,0"/>
+                    <TextBlock Text="البيانات المالية مخفية — اضغط عرض البيانات لفتح القفل"
+                               FontSize="13" Foreground="#6E6E73" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ══════════════════════════════════════════════════════
+                 Row 4: زر طباعة جميع الحركات
+            ══════════════════════════════════════════════════════ -->
+            <Button Grid.Row="4" Margin="0,0,0,12" Height="52"
+                    Command="{Binding PrintCommand}"
+                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="b" CornerRadius="8"
-                                Background="{TemplateBinding Background}"
-                                Padding="{TemplateBinding Padding}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding LockIcon}"    FontSize="14" Margin="0,0,6,0"/>
-                                <TextBlock Text="{Binding LockButtonText}" FontSize="12"/>
+                        <Border x:Name="b" CornerRadius="12" Background="#C0392B">
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="&#x1F5A8;&#xFE0F;" FontSize="20"
+                                           Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="طباعة جميع الحركات"
+                                               Foreground="White" FontSize="15" FontWeight="Bold"/>
+                                    <TextBlock Foreground="#FFAAAA" FontSize="11">
+                                        <Run Text="("/>
+                                        <Run Text="{Binding FilteredCount, Mode=OneWay}"/>
+                                        <Run Text=" حركة)"/>
+                                    </TextBlock>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="b" Property="Background" Value="#922B21"/>
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="b" Property="Background" Value="#CCCCCC"/>
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Button.Template>
             </Button>
+
+            <!-- ══════════════════════════════════════════════════════
+                 Row 5: جدول الحركات
+            ══════════════════════════════════════════════════════ -->
+            <Border Grid.Row="5" Style="{StaticResource Card}" Padding="0">
+                <DataGrid ItemsSource="{Binding Entries}"
+                          AutoGenerateColumns="False" IsReadOnly="True"
+                          GridLinesVisibility="Horizontal"
+                          HorizontalGridLinesBrush="#F0F2F5"
+                          BorderThickness="0" Background="White"
+                          RowBackground="White" AlternatingRowBackground="#FAFBFC"
+                          FontSize="13" ColumnHeaderHeight="40"
+                          MinHeight="300"
+                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                          ScrollViewer.CanContentScroll="True">
+                    <DataGrid.Columns>
+
+                        <DataGridTextColumn Header="التاريخ"
+                                            Binding="{Binding Date, StringFormat=d/M/yyyy}" Width="100"/>
+                        <DataGridTextColumn Header="النوع"
+                                            Binding="{Binding RefTypeDisplay}" Width="80"/>
+                        <DataGridTextColumn Header="البيان"
+                                            Binding="{Binding Description}" Width="*"/>
+                        <DataGridTextColumn Header="وارد"
+                                            Binding="{Binding Debit, StringFormat=N2}" Width="110"
+                                            Visibility="{Binding DataContext.IsFinancialUnlocked,
+                                                RelativeSource={RelativeSource AncestorType=UserControl},
+                                                Converter={StaticResource BoolToVis}}"/>
+                        <DataGridTextColumn Header="صادر"
+                                            Binding="{Binding Credit, StringFormat=N2}" Width="110"
+                                            Visibility="{Binding DataContext.IsFinancialUnlocked,
+                                                RelativeSource={RelativeSource AncestorType=UserControl},
+                                                Converter={StaticResource BoolToVis}}"/>
+                        <DataGridTextColumn Header="الرصيد"
+                                            Binding="{Binding Balance, StringFormat=N2}" Width="120"
+                                            FontWeight="Bold"
+                                            Visibility="{Binding DataContext.IsFinancialUnlocked,
+                                                RelativeSource={RelativeSource AncestorType=UserControl},
+                                                Converter={StaticResource BoolToVis}}"/>
+
+                        <!-- ══ عمود الإجراءات: طباعة + تعديل (للفواتير فقط) ══ -->
+                        <DataGridTemplateColumn Header="إجراءات" Width="170">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                Margin="4,0">
+
+                                        <!-- 🖨 طباعة -->
+                                        <Button Width="70" Height="28" Cursor="Hand"
+                                                ToolTip="طباعة تفاصيل هذه الحركة"
+                                                Margin="0,0,6,0"
+                                                Command="{Binding DataContext.PrintEntryCommand,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="rb" CornerRadius="6" Background="#C0392B">
+                                                        <TextBlock Text="&#x1F5A8;&#xFE0F; طباعة"
+                                                                   Foreground="White" FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="rb" Property="Background" Value="#922B21"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+
+                                        <!-- ✏️ تعديل — يظهر فقط للحركات من نوع فاتورة -->
+                                        <Button Width="70" Height="28" Cursor="Hand"
+                                                ToolTip="تعديل هذه الفاتورة (يتطلب الرمز السري)"
+                                                Command="{Binding DataContext.EditInvoiceEntryCommand,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding RefType}" Value="Invoice">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="eb" CornerRadius="6" Background="#1A5276">
+                                                        <TextBlock Text="✏️ تعديل"
+                                                                   Foreground="White" FontSize="11"
+                                                                   FontWeight="SemiBold"
+                                                                   HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="eb" Property="Background" Value="#154360"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
         </Grid>
-
-        <!-- ══════════════════════════════════════════════════════
-             Row 1: فلاتر التاريخ + زر عرض
-        ══════════════════════════════════════════════════════ -->
-        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,10">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="الخزينة:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <!-- داخل Row 1، بعد ComboBox الخزينة وقبل TextBlock "من:" -->
-                <ToggleButton x:Name="CombinedToggle"
-              IsChecked="{Binding ShowCombined}"
-              Margin="0,0,16,0"
-              Height="30" Width="100">
-                    <ToggleButton.Style>
-                        <Style TargetType="{x:Type ToggleButton}">
-                            <Setter Property="Content" Value="عرض مجمع"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter Property="Content" Value="عرض منفصل"/>
-                                    <Setter Property="Background" Value="#C0392B"/>
-                                    <Setter Property="Foreground" Value="White"/>
-                                    <Setter Property="BorderBrush" Value="#C0392B"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ToggleButton.Style>
-                </ToggleButton>
-                <ComboBox ItemsSource="{Binding Safes}" SelectedItem="{Binding SelectedSafe}"
-                          DisplayMemberPath="Name"
-                          Style="{StaticResource FormComboBox}" Width="180" Margin="0,0,16,0"/>
-
-                <TextBlock Text="من:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <DatePicker SelectedDate="{Binding From}" Margin="0,0,16,0"/>
-                <TextBlock Text="إلى:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                <DatePicker SelectedDate="{Binding To}"   Margin="0,0,16,0"/>
-                <Button Content="🔍  عرض" Command="{Binding LoadStatementCommand}"
-                        Style="{StaticResource SecondaryButton}"/>
-            </StackPanel>
-        </Border>
-
-        <!-- ══════════════════════════════════════════════════════
-             Row 2: شريط البحث النصي الفوري
-        ══════════════════════════════════════════════════════ -->
-        <Border Grid.Row="2"
-                Background="White" BorderBrush="#D2D2D7" BorderThickness="1"
-                CornerRadius="10" Padding="12,8" Margin="0,0,0,10">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <!-- أيقونة البحث  -->
-                    <ColumnDefinition Width="*"/>
-                    <!-- خانة النص     -->
-                    <ColumnDefinition Width="Auto"/>
-                    <!-- زر المسح      -->
-                    <ColumnDefinition Width="Auto"/>
-                    <!-- عداد النتائج  -->
-                </Grid.ColumnDefinitions>
-
-                <!-- أيقونة البحث -->
-                <TextBlock Grid.Column="0" Text="🔍"
-                           FontSize="16" VerticalAlignment="Center"
-                           Margin="0,0,10,0" Foreground="#8E8E93"/>
-
-                <!-- خانة إدخال النص -->
-                <TextBox Grid.Column="1"
-                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         FontSize="13" VerticalAlignment="Center"
-                         BorderThickness="0" Background="Transparent"
-                         FlowDirection="RightToLeft"
-                         ToolTip="ابحث بالتاريخ، النوع، البيان، أو المبلغ">
-                    <TextBox.Style>
-                        <Style TargetType="TextBox">
-                            <Style.Resources>
-                                <!-- Placeholder نص -->
-                                <VisualBrush x:Key="PlaceholderBrush" AlignmentX="Right" AlignmentY="Center" Stretch="None">
-                                    <VisualBrush.Visual>
-                                        <TextBlock Text="ابحث بالتاريخ، النوع، البيان، أو المبلغ..."
-                                                   Foreground="#BDBDBD" FontSize="13"
-                                                   FlowDirection="RightToLeft"/>
-                                    </VisualBrush.Visual>
-                                </VisualBrush>
-                            </Style.Resources>
-                            <Style.Triggers>
-                                <Trigger Property="Text" Value="">
-                                    <Setter Property="Background" Value="{StaticResource PlaceholderBrush}"/>
-                                </Trigger>
-                                <Trigger Property="IsFocused" Value="True">
-                                    <Setter Property="Background" Value="Transparent"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBox.Style>
-                </TextBox>
-
-                <!-- زر مسح البحث — يظهر فقط لما يكون فيه نص -->
-                <Button Grid.Column="2"
-                        Command="{Binding ClearSearchCommand}"
-                        ToolTip="مسح البحث"
-                        Cursor="Hand" Margin="8,0,10,0"
-                        Width="22" Height="22"
-                        VerticalAlignment="Center">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border x:Name="cb" CornerRadius="11"
-                                                Background="#BDBDBD">
-                                            <TextBlock Text="✕" Foreground="White"
-                                                       FontSize="11" FontWeight="Bold"
-                                                       HorizontalAlignment="Center"
-                                                       VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="cb" Property="Background" Value="#C0392B"/>
-                                            </Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                            <!-- يظهر فقط لما SearchText ليس فارغاً -->
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SearchText}" Value="">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                </Button>
-
-                <!-- عداد النتائج -->
-                <Border Grid.Column="3"
-                        Background="#F0F2F5" CornerRadius="8"
-                        Padding="8,3" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock FontSize="12" Foreground="#6E6E73" VerticalAlignment="Center">
-                            <Run Text="{Binding FilteredCount, Mode=OneWay}"/>
-                            <Run Text=" حركة"/>
-                        </TextBlock>
-                    </StackPanel>
-                </Border>
-
-            </Grid>
-        </Border>
-
-        <!-- ══════════════════════════════════════════════════════
-             Row 3: ملخص الأرصدة
-        ══════════════════════════════════════════════════════ -->
-        <Border Grid.Row="3" Background="#F5F5F7" BorderBrush="#D2D2D7" BorderThickness="1"
-                CornerRadius="10" Padding="16" Margin="0,0,0,12"
-                Visibility="{Binding IsFinancialUnlocked, Converter={StaticResource BoolToVis}}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="3" HorizontalAlignment="Center">
-                    <TextBlock Text="الرصيد الافتتاحي" FontSize="10" Foreground="#6E6E73"/>
-                    <TextBlock Text="{Binding OpeningBalance, StringFormat=N2}" FontSize="16" FontWeight="Bold" Foreground="#1A5276"/>
-                </StackPanel>
-                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                    <TextBlock Text="إجمالي الوارد" FontSize="10" Foreground="#6E6E73"/>
-                    <TextBlock Text="{Binding TotalDebit, StringFormat=N2}" FontSize="16" FontWeight="Bold" Foreground="#1E8449"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
-                    <TextBlock Text="إجمالي الصادر" FontSize="10" Foreground="#6E6E73"/>
-                    <TextBlock Text="{Binding TotalCredit, StringFormat=N2}" FontSize="16" FontWeight="Bold" Foreground="#7B241C"/>
-                </StackPanel>
-                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                    <TextBlock Text="الرصيد الحالي" FontSize="10" Foreground="#6E6E73"/>
-                    <TextBlock Text="{Binding ClosingBalance, StringFormat=N2}" FontSize="18" FontWeight="Bold" Foreground="#C0392B"/>
-                </StackPanel>
-            </Grid>
-        </Border>
-        <Border Grid.Row="3" Background="#F5F5F7" BorderBrush="#D2D2D7" BorderThickness="1"
-                CornerRadius="10" Padding="24" Margin="0,0,0,12"
-                Visibility="{Binding IsFinancialUnlocked, Converter={StaticResource InvBoolToVis}}">
-            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                <TextBlock Text="🔒" FontSize="20" Margin="0,0,12,0"/>
-                <TextBlock Text="البيانات المالية مخفية — اضغط عرض البيانات لفتح القفل"
-                           FontSize="13" Foreground="#6E6E73" VerticalAlignment="Center"/>
-            </StackPanel>
-        </Border>
-
-        <!-- ══════════════════════════════════════════════════════
-             Row 4: زر طباعة جميع الحركات
-        ══════════════════════════════════════════════════════ -->
-        <Button Grid.Row="4" Margin="0,0,0,12" Height="52"
-                Command="{Binding PrintCommand}"
-                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
-            <Button.Template>
-                <ControlTemplate TargetType="Button">
-                    <Border x:Name="b" CornerRadius="12" Background="#C0392B">
-                        <StackPanel Orientation="Horizontal"
-                                    HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Text="&#x1F5A8;&#xFE0F;" FontSize="20"
-                                       Margin="0,0,10,0" VerticalAlignment="Center"/>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="طباعة جميع الحركات"
-                                           Foreground="White" FontSize="15" FontWeight="Bold"/>
-                                <TextBlock Foreground="#FFAAAA" FontSize="11">
-                                    <Run Text="("/>
-                                    <Run Text="{Binding FilteredCount, Mode=OneWay}"/>
-                                    <Run Text=" حركة)"/>
-                                </TextBlock>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="#922B21"/>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                            <Setter TargetName="b" Property="Background" Value="#CCCCCC"/>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Button.Template>
-        </Button>
-
-        <!-- ══════════════════════════════════════════════════════
-             Row 5: جدول الحركات
-        ══════════════════════════════════════════════════════ -->
-        <Border Grid.Row="5" Style="{StaticResource Card}" Padding="0">
-            <DataGrid ItemsSource="{Binding Entries}"
-                      AutoGenerateColumns="False" IsReadOnly="True"
-                      GridLinesVisibility="Horizontal"
-                      HorizontalGridLinesBrush="#F0F2F5"
-                      BorderThickness="0" Background="White"
-                      RowBackground="White" AlternatingRowBackground="#FAFBFC"
-                      FontSize="13" ColumnHeaderHeight="40">
-                <DataGrid.Columns>
-
-                    <DataGridTextColumn Header="التاريخ"
-                                        Binding="{Binding Date, StringFormat=d/M/yyyy}" Width="100"/>
-                    <DataGridTextColumn Header="النوع"
-                                        Binding="{Binding RefTypeDisplay}" Width="80"/>
-                    <DataGridTextColumn Header="البيان"
-                                        Binding="{Binding Description}" Width="*"/>
-                    <DataGridTextColumn Header="وارد"
-                                        Binding="{Binding Debit, StringFormat=N2}" Width="110"
-                                        Visibility="{Binding DataContext.IsFinancialUnlocked,
-                                            RelativeSource={RelativeSource AncestorType=UserControl},
-                                            Converter={StaticResource BoolToVis}}"/>
-                    <DataGridTextColumn Header="صادر"
-                                        Binding="{Binding Credit, StringFormat=N2}" Width="110"
-                                        Visibility="{Binding DataContext.IsFinancialUnlocked,
-                                            RelativeSource={RelativeSource AncestorType=UserControl},
-                                            Converter={StaticResource BoolToVis}}"/>
-                    <DataGridTextColumn Header="الرصيد"
-                                        Binding="{Binding Balance, StringFormat=N2}" Width="120"
-                                        FontWeight="Bold"
-                                        Visibility="{Binding DataContext.IsFinancialUnlocked,
-                                            RelativeSource={RelativeSource AncestorType=UserControl},
-                                            Converter={StaticResource BoolToVis}}"/>
-
-                    <!-- ══ عمود الإجراءات: طباعة + تعديل (للفواتير فقط) ══ -->
-                    <DataGridTemplateColumn Header="إجراءات" Width="170">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal"
-                                            VerticalAlignment="Center"
-                                            Margin="4,0">
-
-                                    <!-- 🖨 طباعة -->
-                                    <Button Width="70" Height="28" Cursor="Hand"
-                                            ToolTip="طباعة تفاصيل هذه الحركة"
-                                            Margin="0,0,6,0"
-                                            Command="{Binding DataContext.PrintEntryCommand,
-                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}">
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="rb" CornerRadius="6" Background="#C0392B">
-                                                    <TextBlock Text="&#x1F5A8;&#xFE0F; طباعة"
-                                                               Foreground="White" FontSize="11"
-                                                               FontWeight="SemiBold"
-                                                               HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="rb" Property="Background" Value="#922B21"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-
-                                    <!-- ✏️ تعديل — يظهر فقط للحركات من نوع فاتورة -->
-                                    <Button Width="70" Height="28" Cursor="Hand"
-                                            ToolTip="تعديل هذه الفاتورة (يتطلب الرمز السري)"
-                                            Command="{Binding DataContext.EditInvoiceEntryCommand,
-                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding RefType}" Value="Invoice">
-                                                        <Setter Property="Visibility" Value="Visible"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                        <Button.Template>
-                                            <ControlTemplate TargetType="Button">
-                                                <Border x:Name="eb" CornerRadius="6" Background="#1A5276">
-                                                    <TextBlock Text="✏️ تعديل"
-                                                               Foreground="White" FontSize="11"
-                                                               FontWeight="SemiBold"
-                                                               HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center"/>
-                                                </Border>
-                                                <ControlTemplate.Triggers>
-                                                    <Trigger Property="IsMouseOver" Value="True">
-                                                        <Setter TargetName="eb" Property="Background" Value="#154360"/>
-                                                    </Trigger>
-                                                </ControlTemplate.Triggers>
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-
-                                </StackPanel>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
-    </Grid>
+    </ScrollViewer>
 </UserControl>
