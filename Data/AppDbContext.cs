@@ -129,9 +129,9 @@ public class AppDbContext : DbContext
         mb.Entity<ElectronicPaymentDetail>(e =>
         {
             e.HasKey(x => x.Id);
-            e.Property(x => x.FromAccountName).IsRequired().HasMaxLength(200);
-            e.Property(x => x.ToAccountName).IsRequired().HasMaxLength(200);
-            e.Property(x => x.TransactionReference).HasMaxLength(100);
+            //e.Property(x => x.FromAccountName).IsRequired().HasMaxLength(200);
+            //e.Property(x => x.ToAccountName).IsRequired().HasMaxLength(200);
+            //e.Property(x => x.TransactionReference).HasMaxLength(100);
             e.Property(x => x.Method).HasConversion<string>();
 
             e.HasOne(x => x.Invoice)

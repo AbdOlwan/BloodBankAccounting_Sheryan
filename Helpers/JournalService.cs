@@ -23,7 +23,7 @@ public static class JournalService
         return safe.Type switch
         {
             SafeType.Electronic => AccountCodes.Electronic,
-            SafeType.Bank => AccountCodes.Bank,
+            SafeType.Cash => AccountCodes.Cash,
             _ => AccountCodes.Cash
         };
     }

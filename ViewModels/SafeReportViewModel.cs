@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.ObjectModel;
+using System.Windows;
 
 namespace BloodBankAccounting.ViewModels;
 
@@ -30,17 +31,25 @@ public partial class SafeReportViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleFinancialLock()
     {
-        if (IsFinancialUnlocked) { IsFinancialUnlocked = false; return; }
+        try
+        {
+            if (IsFinancialUnlocked) { IsFinancialUnlocked = false; return; }
 
-        if (string.IsNullOrEmpty(_ownerPinHash)) { IsFinancialUnlocked = true; return; }
+            if (string.IsNullOrEmpty(_ownerPinHash)) { IsFinancialUnlocked = true; return; }
 
-        var enteredPin = Views.PinDialog.Show(System.Windows.Application.Current.MainWindow);
-        if (enteredPin is null) return;
+            var enteredPin = Views.PinDialog.Show(Application.Current.MainWindow);
+            if (enteredPin is null) return;
 
-        if (PinHelper.Verify(enteredPin, _ownerPinHash))
-            IsFinancialUnlocked = true;
-        else
-            ShowError("الرمز السري غير صحيح");
+            if (PinHelper.Verify(enteredPin, _ownerPinHash))
+                IsFinancialUnlocked = true;
+            else
+                ShowError("الرمز السري غير صحيح");
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLogger.Log(nameof(ToggleFinancialLock), ex);
+            ShowError($"خطأ في عملية القفل:\n{ex.Message}");
+        }
     }
 
     // ════════════════════════════════════════════════════════════
@@ -48,7 +57,8 @@ public partial class SafeReportViewModel : ViewModelBase
     // ════════════════════════════════════════════════════════════
     public ObservableCollection<Safe> Safes { get; } = [];
 
-    private readonly ObservableCollection<SafeEntryRow> _allEntries = [];
+    // _allEntries قائمة داخلية فقط — لا تُربط بـ UI مباشرة
+    private readonly List<SafeEntryRow> _allEntries = [];
     public ObservableCollection<SafeEntryRow> Entries { get; } = [];
 
     [ObservableProperty] private Safe? _selectedSafe;
@@ -62,11 +72,11 @@ public partial class SafeReportViewModel : ViewModelBase
     [ObservableProperty] private decimal _totalCredit;
 
     // ════════════════════════════════════════════════════════════
-    //  فلتر المجمع/المنفصل (جديد)
+    //  فلتر المجمع/المنفصل
     // ════════════════════════════════════════════════════════════
     [ObservableProperty] private bool _showCombined = false;
 
-    partial void OnShowCombinedChanged(bool value) => _ = LoadStatementAsync();
+    partial void OnShowCombinedChanged(bool value) => RunLoadStatement();
 
     // ════════════════════════════════════════════════════════════
     //  البحث النصي
@@ -76,23 +86,34 @@ public partial class SafeReportViewModel : ViewModelBase
 
     partial void OnSearchTextChanged(string value) => ApplySearch();
 
+    // ApplySearch تعمل دائماً على UI Thread
     private void ApplySearch()
     {
-        var term = SearchText?.Trim() ?? string.Empty;
-        Entries.Clear();
+        try
+        {
+            var term = SearchText?.Trim() ?? string.Empty;
 
-        var filtered = string.IsNullOrEmpty(term)
-            ? _allEntries
-            : _allEntries.Where(e =>
-                e.Date.ToString("d/M/yyyy").Contains(term) ||
-                e.RefTypeDisplay.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                e.Description.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                e.Debit.ToString("N2").Contains(term) ||
-                e.Credit.ToString("N2").Contains(term) ||
-                e.Balance.ToString("N2").Contains(term));
+            var filtered = string.IsNullOrEmpty(term)
+                ? _allEntries.ToList()
+                : _allEntries.Where(e =>
+                    e.Date.ToString("d/M/yyyy").Contains(term) ||
+                    e.RefTypeDisplay.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    e.Description.Contains(term, StringComparison.OrdinalIgnoreCase) ||
+                    e.Debit.ToString("N2").Contains(term) ||
+                    e.Credit.ToString("N2").Contains(term) ||
+                    e.Balance.ToString("N2").Contains(term)).ToList();
 
-        foreach (var row in filtered) Entries.Add(row);
-        OnPropertyChanged(nameof(FilteredCount));
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                Entries.Clear();
+                foreach (var row in filtered) Entries.Add(row);
+                OnPropertyChanged(nameof(FilteredCount));
+            });
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLogger.Log(nameof(ApplySearch), ex);
+        }
     }
 
     [RelayCommand]
@@ -101,14 +122,48 @@ public partial class SafeReportViewModel : ViewModelBase
     // ════════════════════════════════════════════════════════════
     //  تحميل
     // ════════════════════════════════════════════════════════════
-    public SafeReportViewModel() { _ = LoadAsync(); }
+    public SafeReportViewModel() { RunLoadAsync(); }
+
+    // async void بدلاً من _ = Task() — هي النمط الصحيح لـ fire-and-forget في WPF
+    private async void RunLoadAsync()
+    {
+        try { await LoadAsync(); }
+        catch (Exception ex)
+        {
+            DiagnosticLogger.Log(nameof(LoadAsync), ex);
+            ShowError(
+                $"خطأ في تحميل بيانات الخزائن:\n\n" +
+                $"النوع: {ex.GetType().Name}\n" +
+                $"الرسالة: {ex.Message}\n\n" +
+                $"الخطأ الداخلي: {ex.InnerException?.Message}");
+        }
+    }
+
+    private async void RunLoadStatement()
+    {
+        try { await LoadStatementAsync(); }
+        catch (Exception ex)
+        {
+            DiagnosticLogger.Log(nameof(LoadStatementAsync) + "_auto", ex);
+            ShowError(
+                $"خطأ في تحميل كشف الخزينة:\n\n" +
+                $"النوع: {ex.GetType().Name}\n" +
+                $"الرسالة: {ex.Message}\n\n" +
+                $"الخطأ الداخلي: {ex.InnerException?.Message}");
+        }
+    }
 
     private async Task LoadAsync()
     {
         using var db = new AppDbContext();
         var safes = await db.Safes.OrderBy(s => s.Name).ToListAsync();
-        Safes.Clear();
-        safes.ForEach(Safes.Add);
+
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            Safes.Clear();
+            safes.ForEach(Safes.Add);
+        });
+
         SelectedSafe = safes.FirstOrDefault(s => s.IsMain) ?? safes.FirstOrDefault();
 
         var org = await db.OrgSettings.FirstOrDefaultAsync();
@@ -118,73 +173,104 @@ public partial class SafeReportViewModel : ViewModelBase
 
     partial void OnSelectedSafeChanged(Safe? value)
     {
-        if (value is not null) _ = LoadStatementAsync();
+        if (value is not null) RunLoadStatement();
     }
 
     [RelayCommand]
     private async Task LoadStatementAsync()
     {
-        if (SelectedSafe is null && !ShowCombined) return;
-
-        using var db = new AppDbContext();
-
-        // تحديد أكواد الحسابات المطلوبة
-        string[] safeCodes;
-        if (ShowCombined)
+        try
         {
-            safeCodes = new[] { AccountCodes.Cash, AccountCodes.Electronic, AccountCodes.Bank };
-        }
-        else
-        {
-            var code = JournalService.GetSafeAccountCode(SelectedSafe!);
-            safeCodes = new[] { code };
-        }
+            if (SelectedSafe is null && !ShowCombined) return;
 
-        var beforeDebit = await db.JournalEntries
-            .Where(j => j.Date < From && safeCodes.Contains(j.AccountCode))
-            .SumAsync(j => (decimal?)j.DebitAmount) ?? 0;
+            using var db = new AppDbContext();
 
-        var beforeCredit = await db.JournalEntries
-            .Where(j => j.Date < From && safeCodes.Contains(j.AccountCode))
-            .SumAsync(j => (decimal?)j.CreditAmount) ?? 0;
+            // بناء الفلتر صراحةً بدلاً من Contains على array
+            // لأن EF Core 8 يُترجم Contains إلى OPENJSON...WITH غير مدعوم على بعض إصدارات SQL Server
+            string safeCode1;
+            string? safeCode2 = null;
 
-        OpeningBalance = beforeDebit - beforeCredit;
-
-        var entries = await db.JournalEntries
-            .Where(j => j.Date >= From && j.Date <= To && safeCodes.Contains(j.AccountCode))
-            .OrderBy(j => j.Date)
-            .ToListAsync();
-
-        _allEntries.Clear();
-        var runningBalance = OpeningBalance;
-
-        foreach (var e in entries)
-        {
-            runningBalance += e.DebitAmount - e.CreditAmount;
-            _allEntries.Add(new SafeEntryRow
+            if (ShowCombined)
             {
-                Date = e.Date,
-                RefType = e.RefType,
-                RefId = e.RefId,
-                RefTypeDisplay = e.RefType switch
+                safeCode1 = AccountCodes.Cash;
+                safeCode2 = AccountCodes.Electronic;
+            }
+            else
+            {
+                safeCode1 = JournalService.GetSafeAccountCode(SelectedSafe!);
+            }
+
+            bool isCombined = safeCode2 is not null;
+
+            var beforeDebit = await db.JournalEntries
+                .Where(j => j.Date < From &&
+                            (j.AccountCode == safeCode1 || (isCombined && j.AccountCode == safeCode2)))
+                .SumAsync(j => (decimal?)j.DebitAmount) ?? 0;
+
+            var beforeCredit = await db.JournalEntries
+                .Where(j => j.Date < From &&
+                            (j.AccountCode == safeCode1 || (isCombined && j.AccountCode == safeCode2)))
+                .SumAsync(j => (decimal?)j.CreditAmount) ?? 0;
+
+            OpeningBalance = beforeDebit - beforeCredit;
+
+            var entries = await db.JournalEntries
+                .Where(j => j.Date >= From && j.Date <= To &&
+                            (j.AccountCode == safeCode1 || (isCombined && j.AccountCode == safeCode2)))
+                .OrderBy(j => j.Date)
+                .ToListAsync();
+
+            // بناء الـ rows على background thread — بدون لمس ObservableCollection
+            var rows = new List<SafeEntryRow>(entries.Count);
+            var runningBalance = OpeningBalance;
+
+            foreach (var e in entries)
+            {
+                runningBalance += e.DebitAmount - e.CreditAmount;
+                rows.Add(new SafeEntryRow
                 {
-                    "Invoice" => "فاتورة",
-                    "Receipt" => "قبض",
-                    "Payment" => "صرف",
-                    _ => e.RefType
-                },
-                Description = e.AccountName,
-                Debit = e.DebitAmount,
-                Credit = e.CreditAmount,
-                Balance = runningBalance
+                    Date = e.Date,
+                    RefType = e.RefType,
+                    RefId = e.RefId,
+                    RefTypeDisplay = e.RefType switch
+                    {
+                        "Invoice" => "فاتورة",
+                        "Receipt" => "قبض",
+                        "Payment" => "صرف",
+                        _ => e.RefType
+                    },
+                    Description = e.AccountName,
+                    Debit = e.DebitAmount,
+                    Credit = e.CreditAmount,
+                    Balance = runningBalance
+                });
+            }
+
+            var totalDebit = entries.Sum(e => e.DebitAmount);
+            var totalCredit = entries.Sum(e => e.CreditAmount);
+
+            // كل تعديل على UI يتم على UI Thread
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                _allEntries.Clear();
+                _allEntries.AddRange(rows);
+                TotalDebit = totalDebit;
+                TotalCredit = totalCredit;
+                ClosingBalance = runningBalance;
             });
+
+            ApplySearch();
         }
-
-        TotalDebit = entries.Sum(e => e.DebitAmount);
-        TotalCredit = entries.Sum(e => e.CreditAmount);
-        ClosingBalance = runningBalance;
-
-        ApplySearch();
+        catch (Exception ex)
+        {
+            DiagnosticLogger.Log(nameof(LoadStatementAsync), ex);
+            ShowError(
+                $"خطأ في تحميل بيانات الخزينة:\n\n" +
+                $"النوع: {ex.GetType().Name}\n" +
+                $"الرسالة: {ex.Message}\n\n" +
+                $"الخطأ الداخلي: {ex.InnerException?.Message}\n\n" +
+                $"تم حفظ التفاصيل في:\n{DiagnosticLogger.GetLogPath()}");
+        }
     }
 
     // ════════════════════════════════════════════════════════════
@@ -203,6 +289,11 @@ public partial class SafeReportViewModel : ViewModelBase
                 OpeningBalance, ClosingBalance,
                 TotalDebit, TotalCredit,
                 Entries.ToList());
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLogger.Log(nameof(PrintAsync), ex);
+            ShowError($"خطأ في الطباعة:\n{ex.Message}\n\nالخطأ الداخلي: {ex.InnerException?.Message}");
         }
         finally { IsBusy = false; }
     }
@@ -230,7 +321,15 @@ public partial class SafeReportViewModel : ViewModelBase
                     break;
             }
         }
-        catch (Exception ex) { ShowError($"خطأ في الطباعة:\n{ex.Message}"); }
+        catch (Exception ex)
+        {
+            DiagnosticLogger.Log(nameof(PrintEntryAsync), ex);
+            ShowError(
+                $"خطأ في طباعة الحركة:\n\n" +
+                $"النوع: {ex.GetType().Name}\n" +
+                $"الرسالة: {ex.Message}\n\n" +
+                $"الخطأ الداخلي: {ex.InnerException?.Message}");
+        }
         finally { IsBusy = false; }
     }
 
@@ -244,8 +343,16 @@ public partial class SafeReportViewModel : ViewModelBase
             return;
         }
 
-        var saved = Views.EditInvoiceWindow.ShowEdit(entry.RefId, System.Windows.Application.Current.MainWindow);
-        if (saved) await LoadStatementAsync();
+        try
+        {
+            var saved = Views.EditInvoiceWindow.ShowEdit(entry.RefId, Application.Current.MainWindow);
+            if (saved) await LoadStatementAsync();
+        }
+        catch (Exception ex)
+        {
+            DiagnosticLogger.Log(nameof(EditInvoiceEntryAsync), ex);
+            ShowError($"خطأ في تعديل الفاتورة:\n{ex.Message}\n\nالخطأ الداخلي: {ex.InnerException?.Message}");
+        }
     }
 }
 

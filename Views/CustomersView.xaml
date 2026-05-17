@@ -10,11 +10,13 @@
         3. Margin الخارجي: "24" → "20"
     -->
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="20">
+    <ScrollViewer x:Name="OuterScroller"
+              VerticalScrollBarVisibility="Auto"
+              HorizontalScrollBarVisibility="Auto">
+
+        <Grid Margin="20" MinWidth="700">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*" MinWidth="380"/>
                 <!-- ✅ بدل Width="340" الثابت -->
                 <ColumnDefinition Width="2*" MaxWidth="360" MinWidth="260"/>
             </Grid.ColumnDefinitions>
@@ -48,23 +50,48 @@
 
                     <!-- Grid -->
                     <DataGrid Style="{StaticResource MainDataGrid}"
-                              ItemsSource="{Binding Customers}"
-                              SelectedItem="{Binding Selected}">
+                             x:Name="CustomersGrid"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             ItemsSource="{Binding Customers}"
+                             SelectedItem="{Binding Selected}"
+                             PreviewMouseWheel="DataGrid_PreviewMouseWheel">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="الاسم"
-                                               Binding="{Binding Name}" Width="*"/>
+                    Binding="{Binding Name}"
+                    Width="*"
+                    MinWidth="150">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                        <Setter Property="ToolTip" Value="{Binding Name}"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                             <DataGridTextColumn Header="النوع"
-                                               Binding="{Binding Type, Converter={StaticResource EnumDisplay}}" Width="100"/>
+                                                Binding="{Binding Type, Converter={StaticResource EnumDisplay}}"
+                                                Width="90" MinWidth="80"/>
                             <DataGridTextColumn Header="الهاتف"
-                                               Binding="{Binding Phone}" Width="120"/>
+                                                 Binding="{Binding Phone}"
+                                                 Width="120" MinWidth="100"/>
                             <DataGridTextColumn Header="الرصيد (ج.م)"
-                                               Binding="{Binding Balance, StringFormat='{}{0:N2}'}" Width="120"/>
+                                                 Binding="{Binding Balance, StringFormat='{}{0:N2}'}"
+                                                 Width="120" MinWidth="110"/>
                             <DataGridTextColumn Header="حد الائتمان"
-                                               Binding="{Binding CreditLimit, StringFormat='{}{0:N2}'}" Width="120"/>
+                                                 Binding="{Binding CreditLimit, StringFormat='{}{0:N2}'}"
+                                                 Width="120" MinWidth="110"/>
                         </DataGrid.Columns>
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="Transparent"/>
                                 <Style.Triggers>
+                                    <Trigger Property="AlternationIndex" Value="1">
+                                        <Setter Property="Background" Value="#F9FAFB"/>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#EFF6FF"/>
+                                    </Trigger>
                                     <DataTrigger Binding="{Binding IsActive}" Value="False">
                                         <Setter Property="Foreground" Value="#AAAAAA"/>
                                     </DataTrigger>
